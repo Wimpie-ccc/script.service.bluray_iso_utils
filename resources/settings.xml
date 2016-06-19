@@ -1,0 +1,5 @@
+<settings>
+	<category label="32830">
+		<setting id="enabled" label="32841" type="bool" default="true"/>
+	</category>
+</settings>
