@@ -6,3 +6,5 @@ This addon will enable the Kodi user to access all videos on a bluray iso file.
 This is done through the use of .strm files. No symlinks need to be made.
 
 #Usage
+Directory structure
+--------------------
