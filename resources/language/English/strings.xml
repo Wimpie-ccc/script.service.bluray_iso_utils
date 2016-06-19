@@ -1,1 +1,17 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 
+<!-- 
+    This language file is based on the one of script.xbmc.subtitles
+    Thanks to their original authors amet, mr_blobby 
+-->
+
+<strings>
+    
+  <!-- English -->
+  
+  <!-- Script Settings -->
+
+  	<string id="32830">General</string> 
+	<string id="32841">Enable Bluray iso utils service?</string>
+	    
+</strings>
