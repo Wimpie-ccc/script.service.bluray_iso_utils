@@ -18,7 +18,7 @@ This is done through the use of .strm files. No symlinks need to be made.
 #Usage
 Directory structure
 --------------------
-This addon is developed with the "default" directory layout of Kodi in mind  (see: http://kodi.wiki/view/Naming_video_files/TV_shows , 1.1 Simple)
+This addon is developed with the "default" directory layout of Kodi in mind  [see: 1.1 Simple](http://kodi.wiki/view/Naming_video_files/TV_shows)
 
 You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Kodi wil NOT scan these iso files. 
 
