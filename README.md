@@ -33,7 +33,7 @@ The [.strm files](https://github.com/Wimpie-ccc/helperfiles/blob/master/s01e01.s
 ![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/example.strm-file.png)
 
 Line 1:
-- Do not touch, contains location of a helper video, needed for correct function of this addon.
+Do not touch, contains location of a helper video, needed for correct function of this addon.
 
 Line 2:
 - Contains the location of the bluray iso file, relative from the directory that contains this .strm file
@@ -49,6 +49,7 @@ Line 2 in movie_1_uncut.strm would be: "# ../Movie_1-Theatricalversion/.BIUfiles
 Line 2 in movie2.strm would be "# .BIUfiles/movie2.iso"
 
 Line3:
+
 Could be for movie_1_theatrical.strm "# 00001". NEEDS to be 5 digits!
 
 Could be for movie_1_uncut.strm "# 00002"
