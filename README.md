@@ -33,5 +33,9 @@ The [.strm files](https://github.com/Wimpie-ccc/helperfiles/blob/master/s01e01.s
 ![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/example.strm-file.png)
 
 Line 1:
-Do not touch, contains location of a helper video, needed for correct function of this addon
+- Do not touch, contains location of a helper video, needed for correct function of this addon.
+
 Line 2:
+- Contains the location of the bluray iso file, referenced from the directory that contains this .strm file
+eg:
+lets say C:\Users\vangoew\Downloads
