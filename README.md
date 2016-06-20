@@ -16,6 +16,10 @@ With this addon you are able to:
 This is done through the use of .strm files. No symlinks need to be made. 
 
 #Usage
+Installng
+-----------
+Use install from zip file. At the moment you need no settings to edit.
+
 Directory structure
 --------------------
 This addon is developed with the "default" directory layout of Kodi in mind  [see: 1.1 Simple](http://kodi.wiki/view/Naming_video_files/TV_shows)
@@ -24,6 +28,6 @@ You need to add a directory where the bluray iso files are stored. This director
 
 ![alt text](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/TV-file-structure.png)
 
-The [.strm files](https://github.com/Wimpie-ccc/helperfiles/blob/master/s01e01.strm) have followinf structure:
+The [.strm files](https://github.com/Wimpie-ccc/helperfiles/blob/master/s01e01.strm) have following structure:
 
 ![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/example.strm-file.png)
