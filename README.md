@@ -63,6 +63,7 @@ Optional time from were we start playing, format uu:mm:ss. Can be blank if not n
 Line 5:
 
 Optional time when we stop playing this playlist, format uu:mm:ssm. Can be blank if not needed. eg: "# 01:30:55". Is usefull for those disc were all tv episodes are linked to 1 big video (use together with line 4). eg:
+
 | line 4 | line 5 |
 |--------|--------|
 | 00:00:00 | 00:45:00 |
