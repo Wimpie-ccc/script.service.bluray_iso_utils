@@ -24,26 +24,6 @@ You need to add a directory where the bluray iso files are stored. This director
 
 ![alt text](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/TV-file-structure.png)
 
-The .strm files have followinf structure:
+The [.strm files](https://github.com/Wimpie-ccc/helperfiles/blob/master/s01e01.strm) have followinf structure:
 
-special://home/addons/script.service.bluray_iso_utils/resources/media/BIU_Black_Animation.720p.mp4
-# .BIUfiles/
-#
-#
-#
-#
-#
-#
-#
-# Comments can be put in the file from here
-# Line 1: contains a link to our dummy animation file
-# Line 2: Link to the bluray iso file, relative from the directory containing the '.strm' file. eg: "# .BIUfiles/myblurayiso.iso"
-# Line 3: Playlist of the bluray we need to play, always needs to be 5 numbers. eg: "# 00005"
-# line 4: Optional time from were we start playing, format uu:mm:ss. Can be blank if not needed. eg: "# 00:45:23"
-# Line 5: optional time when we stop playing this playlist, format uu:mm:ssm. Can be blank if not needed. eg: "# 01:30:55"
-# Line 6: Audio channel, starts from 1. Can be blank if not needed. eg: "# 2"
-# Line 7: Subtitle, internal starts from 1, 0 means use external subtitles. Can be blank if not needed. eg: "# 2"
-# Line 8: Reserved
-# Line 9: Reserved
-
-sdf
+![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/example.strm-file.png)
