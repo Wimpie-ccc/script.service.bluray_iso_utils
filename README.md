@@ -39,4 +39,5 @@ Line 2:
 - Contains the location of the bluray iso file, referenced from the directory that contains this .strm file
 eg:
 Lets say C:\Users\wimpie-ccc\Videos\MyMovies\ is the root were all my movies are.
+
 ![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/movie-file-structure.png)
