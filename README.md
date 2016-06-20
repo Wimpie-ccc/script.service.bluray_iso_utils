@@ -31,3 +31,7 @@ You need to add a directory where the bluray iso files are stored. This director
 The [.strm files](https://github.com/Wimpie-ccc/helperfiles/blob/master/s01e01.strm) have following structure:
 
 ![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/example.strm-file.png)
+
+Line 1:
+Do not touch, contains location of a helper video, needed for correct function of this addon
+Line 2:
