@@ -18,7 +18,7 @@ This is done through the use of .strm files. No symlinks need to be made.
 #Usage
 Installng
 -----------
-Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file (rename the zipfile to: "script.service.bluray_iso_utils.zip" before installing). At the moment you need no settings to edit.
+Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file (rename the zipfile to: "script.service.bluray_iso_utils.zip" before installing). At the moment you need no settings to edit. Requires Kodi 16 min.
 
 Directory structure
 --------------------
