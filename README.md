@@ -41,3 +41,5 @@ eg:
 Lets say C:\Users\wimpie-ccc\Videos\MyMovies\ is the root were all my movies are.
 
 ![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/movie-file-structure.png)
+Then line 2 in movie_1_theatrical.strm would be: "# .BIUfiles/movie1.iso"
+Line 2 in movie_1_uncut.strm would be: "# ../Movie_1-Theatricalversion/.BIUfiles/movie1.iso" (Think this as if using cd .. in the shell)
