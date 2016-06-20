@@ -47,3 +47,10 @@ Then line 2 in movie_1_theatrical.strm would be: "# .BIUfiles/movie1.iso"
 Line 2 in movie_1_uncut.strm would be: "# ../Movie_1-Theatricalversion/.BIUfiles/movie1.iso" (Think this as if using "cd .." in the shell)
 
 Line 2 in movie2.strm would be "# .BIUfiles/movie2.iso"
+
+Line3:
+Could be for movie_1_theatrical.strm "# 00001". NEEDS to be 5 digits!
+
+Could be for movie_1_uncut.strm "# 00002"
+
+Could be for movie2.strm "# 00800"
