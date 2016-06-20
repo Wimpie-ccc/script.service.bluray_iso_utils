@@ -48,10 +48,29 @@ Line 2 in movie_1_uncut.strm would be: "# ../Movie_1-Theatricalversion/.BIUfiles
 
 Line 2 in movie2.strm would be "# .BIUfiles/movie2.iso"
 
-Line3:
+Line 3:
+
+This is the number of the playlist on the bluray iso.
 
 Could be for movie_1_theatrical.strm "# 00001". NEEDS to be 5 digits!
 
 Could be for movie_1_uncut.strm "# 00002"
 
 Could be for movie2.strm "# 00800"
+
+Line 4:
+
+Optional time from were we start playing, format uu:mm:ss. Can be blank if not needed. eg: "# 00:45:23". Is usefull for jumping past the "previously on ..." recaps.
+
+Line 5:
+
+Optional time when we stop playing this playlist, format uu:mm:ssm. Can be blank if not needed. eg: "# 01:30:55". Is usefull for those disc were all tv episodes are linked to 1 big video.
+
+Line 6:
+
+Optional Audio channel, starts from 1. Can be blank if not needed. eg: "# 2"
+
+Line 7:
+
+Optional Subtitle, internal starts from 1, 0 means use external subtitles. Can be blank if not needed. eg: "# 2"
+
