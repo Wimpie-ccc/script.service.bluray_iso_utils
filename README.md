@@ -36,14 +36,14 @@ Line 1:
 - Do not touch, contains location of a helper video, needed for correct function of this addon.
 
 Line 2:
-- Contains the location of the bluray iso file, referenced from the directory that contains this .strm file
+- Contains the location of the bluray iso file, relative from the directory that contains this .strm file
 eg:
 Lets say C:\Users\wimpie-ccc\Videos\MyMovies\ is the root were all my movies are.
 
 ![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/movie-file-structure.png)
 
-Then line 2 in 'movie_1_theatrical.strm' would be: "# .BIUfiles/movie1.iso"
+Then line 2 in movie_1_theatrical.strm would be: "# .BIUfiles/movie1.iso"
 
-Line 2 in movie_1_uncut.strm would be: "# ../Movie_1-Theatricalversion/.BIUfiles/movie1.iso" (Think this as if using cd .. in the shell)
+Line 2 in movie_1_uncut.strm would be: "# ../Movie_1-Theatricalversion/.BIUfiles/movie1.iso" (Think this as if using "cd .." in the shell)
 
-Line 2 in 
+Line 2 in movie2.strm would be "# .BIUfiles/movie2.iso"
