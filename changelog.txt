@@ -1,2 +1,9 @@
+v0.1.2  (2016-07-03)
+- Added more media infotags for possible use by the OSD
+
+v0.1.1  (2016-07-01)
+- Add mediainfo to the OSD (thumb, movietitle, episodename, ...)
+- Change starttime seek to a more robust way
+
 v0.1.0  (2016-06-19)
 - Initial release

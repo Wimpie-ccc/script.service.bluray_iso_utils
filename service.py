@@ -18,7 +18,7 @@
 
 from __future__ import unicode_literals
 import urllib
-import xbmc, xbmcaddon, xbmcvfs
+import xbmc, xbmcgui, xbmcaddon, xbmcvfs
 import resources.lib.utils
 from resources.lib.utils import log
 
@@ -104,21 +104,75 @@ class BIUplayer(xbmc.Player):
         # If it is our special video, then we need to redirect xbmc.player to the correct bluray playlist.
         if (settings.service_enabled and Nowplaying == "special://home/addons/script.service.bluray_iso_utils/resources/media/BIU_Black_Animation.720p.mp4"):
             # We are playing a .strm file!!
+            #self.stop()
             # This is the first pass of our service script
             log('First pass of the service script')
 
             # Sometimes getInfoLabel returns "" for ListItem.Path or ListItem.FileName.
-            # I don't know why (Kodi not fast enough??). Try again until succes.
-            ListItem_Path_unicode = ""      # Init
-            ListItem_FileName_unicode = ""  # Init
+            # I don't know why (Helper thread is blocked??). Try again until succes.
+            ListItem_Path_unicode = ""            # Init
+            ListItem_FileName_unicode = ""        # Init
+            ListItem_Art_Thumb_unicode = ""       # Init
+            ListItem_Art_Poster_unicode = ""      # Init
+            ListItem_Prop_TotalSeasons_unicode = ""       # Init
+            ListItem_Prop_TotalEpisodes_unicode = ""      # Init
+            ListItem_Prop_WatchedEpisodes_unicode = ""    # Init
+            ListItem_Prop_UnWatchedEpisodes_unicode = ""  # Init
+            ListItem_Prop_NumEpisodes_unicode = ""        # Init
+            ListItem_Title_unicode = ""           # Init
+            ListItem_TVShowTitle_unicode = ""     # Init
+            ListItem_Season_unicode = ""          # Init
+            ListItem_Episode_unicode = ""         # Init
+            ListItem_Plot_unicode = ""            # Init
+            ListItem_Votes_unicode = ""           # Init
+            ListItem_RatingAndVotes_unicode = ""  # Init
+            ListItem_Mpaa_unicode = ""            # Init
+            ListItem_PlotOutline_unicode = ""     # Init
             mycounter = 0                   # Needed to prevent deadlock when user wants to play video
                                             # from wrong location (result of getinfolabel is always empty).                                            
             while ((ListItem_Path_unicode == "" or ListItem_FileName_unicode == "") and (mycounter < 10)):
                 # Get Name and Path of this .strm file.
+                # We can not use player.path because this returns the file INSIDE the .strm file.
+                # This is a hack, but there is no other way..
+                # Would love a player.StrmPath and a player.StrmFileName infolabel!!!
                 ListItem_Path_unicode = xbmc.getInfoLabel('ListItem.Path').decode("utf-8")
                 log('ListItem.Path = %s ' % ListItem_Path_unicode)
                 ListItem_FileName_unicode = xbmc.getInfoLabel('ListItem.FileName').decode("utf-8")
                 log('ListItem.FileName = %s ' % ListItem_FileName_unicode)
+                # Get all infotags that could be shown on the OSD by the skin.
+                # If I 'forget' one, then a simple request will add the missing infotag here.
+                ListItem_Art_thumb_unicode = xbmc.getInfoLabel('ListItem.Art(thumb)').decode("utf-8")
+                log('ListItem.Art(thumb) = %s ' % ListItem_Art_thumb_unicode)
+                ListItem_Art_poster_unicode = xbmc.getInfoLabel('ListItem.Art(poster)').decode("utf-8")
+                log('ListItem.Art(poster) = %s ' % ListItem_Art_poster_unicode)
+                ListItem_Prop_TotalSeasons_unicode = xbmc.getInfoLabel('ListItem.Property(TotalSeasons)').decode("utf-8")
+                log('ListItem.Property(TotalSeasons) = %s ' % ListItem_Prop_TotalSeasons_unicode)
+                ListItem_Prop_TotalEpisodes_unicode = xbmc.getInfoLabel('ListItem.Property(TotalEpisodes)').decode("utf-8")
+                log('ListItem.Property(TotalEpisodes) = %s ' % ListItem_Prop_TotalEpisodes_unicode)
+                ListItem_Prop_WatchedEpisodes_unicode = xbmc.getInfoLabel('ListItem.Property(WatchedEpisodes)').decode("utf-8")
+                log('ListItem.Property(WatchedEpisodes) = %s ' % ListItem_Prop_WatchedEpisodes_unicode)
+                ListItem_Prop_UnWatchedEpisodes_unicode = xbmc.getInfoLabel('ListItem.Property(UnWatchedEpisodes)').decode("utf-8")
+                log('ListItem.Property(UnWatchedEpisodes) = %s ' % ListItem_Prop_UnWatchedEpisodes_unicode)
+                ListItem_Prop_NumEpisodes_unicode = xbmc.getInfoLabel('ListItem.Property(NumEpisodes)').decode("utf-8")
+                log('ListItem.Property(NumEpisodes) = %s ' % ListItem_Prop_NumEpisodes_unicode)
+                ListItem_Title_unicode = xbmc.getInfoLabel('ListItem.Title').decode("utf-8")
+                log('ListItem.Title = %s ' % ListItem_Title_unicode)
+                ListItem_TVShowTitle_unicode = xbmc.getInfoLabel('ListItem.TVShowTitle').decode("utf-8")
+                log('ListItem.TVShowTitle = %s ' % ListItem_TVShowTitle_unicode)
+                ListItem_Season_unicode = xbmc.getInfoLabel('ListItem.Season').decode("utf-8")
+                log('ListItem.Season = %s ' % ListItem_Season_unicode)
+                ListItem_Episode_unicode = xbmc.getInfoLabel('ListItem.Episode').decode("utf-8")
+                log('ListItem.Episode = %s ' % ListItem_Episode_unicode)
+                ListItem_Plot_unicode = xbmc.getInfoLabel('ListItem.Plot').decode("utf-8")
+                log('ListItem.Plot = %s ' % ListItem_Plot_unicode)
+                ListItem_Votes_unicode = xbmc.getInfoLabel('ListItem.Votes').decode("utf-8")
+                log('ListItem.Votes = %s ' % ListItem_Votes_unicode)
+                ListItem_RatingAndVotes_unicode = xbmc.getInfoLabel('ListItem.RatingAndVotes').decode("utf-8")
+                log('ListItem.RatingAndVotes = %s ' % ListItem_RatingAndVotes_unicode)
+                ListItem_Mpaa_unicode = xbmc.getInfoLabel('ListItem.Mpaa').decode("utf-8")
+                log('ListItem.Mpaa = %s ' % ListItem_Mpaa_unicode)
+                ListItem_PlotOutline_unicode = xbmc.getInfoLabel('ListItem.PlotOutline').decode("utf-8")
+                log('ListItem.PlotOutline = %s ' % ListItem_PlotOutline_unicode)
                 xbmc.sleep(25)
                 mycounter = mycounter + 1
             # 10 times should be enough, if not break
@@ -250,11 +304,34 @@ class BIUplayer(xbmc.Player):
                 log('No valid subtitlestream specified in the .strm file!')
 
             # Play the correct bluray playlist
-            self.play(myescapedisofile_UTF8)
+            # Fill first a listitem with the values of the .strm file. This way we get the correct mediainfo
+            # while playing our bluray playlist. Otherwise this is empty (thumb picture) or 00800.mpls as name...
+            # Could be that we need to copy more later, other skins might want to display other listitems.infolabels
+            mylistitems = xbmcgui.ListItem (ListItem_Title_unicode)
+            mylistitems.setArt({'thumb': ListItem_Art_thumb_unicode})
+            mylistitems.setArt({'poster': ListItem_Art_poster_unicode})
+            # If Global_start_time <> 0 then start the video with the correct starttime (StartOffset).
+            if Global_start_time != 0:
+                mylistitems.setProperty('StartOffset', str(Global_start_time))
+            mylistitems.setProperty('TotalSeasons', ListItem_Prop_TotalSeasons_unicode)
+            mylistitems.setProperty('TotalEpisodes', ListItem_Prop_TotalEpisodes_unicode)
+            mylistitems.setProperty('WatchedEpisodes', ListItem_Prop_WatchedEpisodes_unicode)
+            mylistitems.setProperty('UnWatchedEpisodes', ListItem_Prop_UnWatchedEpisodes_unicode)
+            mylistitems.setProperty('NumEpisodes', ListItem_Prop_NumEpisodes_unicode)
+            mylistitems.setInfo('video', {'PlotOutline': ListItem_PlotOutline_unicode, 
+			                              'Votes': ListItem_Votes_unicode, 
+										  'Mpaa': ListItem_Mpaa_unicode, 
+										  'RatingAndVotes': ListItem_RatingAndVotes_unicode, 
+										  'Title': ListItem_Title_unicode, 
+										  'Plot': ListItem_Plot_unicode, 
+										  'Season': ListItem_Season_unicode, 
+										  'TVShowTitle': ListItem_TVShowTitle_unicode, 
+										  'Episode': ListItem_Episode_unicode})
+            # Now play the bluray playlist with the correct infotags/starttime...
+            self.play(myescapedisofile_UTF8, mylistitems)
             # Temporary 'the end' for onPlayBackStarted.
             # Now it's waiting for the second pass, where we extract subtitle
             # and audio info from the correct bluray playlist.
-            # Seeking to the requested time start is also done there.
 
 
         # Here we have the second pass of our service.
@@ -262,8 +339,6 @@ class BIUplayer(xbmc.Player):
         # If it includes ".BIUfiles" then we have a hit.
         if (settings.service_enabled and ('.BIUfiles' in Nowplaying)):
             log('Second pass of the service script')
-            log('Global stop time = %s' % Global_stop_time)
-            log('Starttime = %s' % Global_start_time)
 
             # If a audiostream number is set in the .strm file,
             # then we enable that audiostream here
@@ -303,13 +378,6 @@ class BIUplayer(xbmc.Player):
                 except:
                     log('No valid subtitlestream specified in the .strm file!')
                                    
-            # If the video should not be played from the beginning, then seek to the correct time.
-            # Sometimes (1 out of 10) the seek doesn't work. I don't know why...
-            log('Starttime just before seek = %s seconds' % Global_start_time)
-            if Global_start_time != 0:
-                self.seekTime(Global_start_time)
-                log('Seek to %s done (hopefully).' % Global_start_time)
-            
 
 # Main loop 
 class Main:
