@@ -52,6 +52,6 @@ def localise(id):
 def log(txt):                                       # loglevel is LOGDEBUG
     if isinstance (txt,str):                        # if txt is an ASCII string
         txt = txt.decode("utf-8")                   # then make it unicode
-    message = u'%s: %s' % ("Bluray iso utils ", txt)
+    message = u'%s: %s' % (ADDONNAME, txt)
     xbmc.log(msg=message.encode("utf-8"), level=xbmc.LOGDEBUG)  # Kodi accepts UTF-8 strings, not unicode
 
