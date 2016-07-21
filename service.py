@@ -280,7 +280,6 @@ class BIUplayer(xbmc.Player):
                 JSON_result = utils.executeJSON(JSON_req)
                 log('JSON VideoLibrary.GetMovieDetails result = %s' % JSON_result)
                 Global_video_dict["ListItem_Cast_unicode"] = JSON_result["result"]["moviedetails"]["cast"]
-                log('cast = %s' % Global_video_dict["ListItem_Cast_unicode"])
                 Global_video_dict["ListItem_Title_unicode"] = JSON_result["result"]["moviedetails"]["title"]
                 Global_video_dict["ListItem_Plot_unicode"] = JSON_result["result"]["moviedetails"]["plot"]
                 Global_video_dict["ListItem_Votes_unicode"] = JSON_result["result"]["moviedetails"]["votes"]
@@ -289,6 +288,7 @@ class BIUplayer(xbmc.Player):
                 Global_video_dict["ListItem_Studio_unicode"] = JSON_result["result"]["moviedetails"]["studio"]
                 Global_video_dict["ListItem_Director_unicode"] =  JSON_result["result"]["moviedetails"]["director"]
                 Global_video_dict["ListItem_Genre_unicode"] =  JSON_result["result"]["moviedetails"]["genre"]
+                log('genre = %s' % Global_video_dict["ListItem_Genre_unicode"])
                 Global_video_dict["ListItem_Trailer_unicode"] =  JSON_result["result"]["moviedetails"]["trailer"]
                 Global_video_dict["ListItem_Tagline_unicode"] =  JSON_result["result"]["moviedetails"]["tagline"]
                 Global_video_dict["ListItem_mpaa_unicode"] =  JSON_result["result"]["moviedetails"]["mpaa"]
@@ -467,6 +467,14 @@ class BIUplayer(xbmc.Player):
                 log('Name: %s' % item["name"])
                 actor_list.append((item["name"], item["role"]))
 
+            # Convert genre list "[u'Comedy', u'Drama', u'Music', u'Mystery']" into string
+            # like: "Comedy / Drama / Music / Mystery"
+            Genre_string = ""
+            for item in Global_video_dict["ListItem_Genre_unicode"]:
+                Genre_string = Genre_string + item + ' / '
+            Genre_string = Genre_string[:-3]
+            log('Genre = %s' % Genre_string)
+
             # Set the player/videoplayer infolabels
             # First infolabels used for both movie and tv shows
             mylistitems.setInfo('video', {'mediatype': Global_BIU_vars["Video_Type"],
@@ -487,7 +495,7 @@ class BIUplayer(xbmc.Player):
                 mylistitems.setInfo('video', { 'plotoutline': Global_video_dict["ListItem_PlotOutline_unicode"],
                                                'mpaa': Global_video_dict["ListItem_mpaa_unicode"],
                                                'studio': Global_video_dict["ListItem_Studio_unicode"],
-                                               'genre': Global_video_dict["ListItem_Genre_unicode"],
+                                               'genre': Genre_string,
                                                'premiered': Global_video_dict["ListItem_Premiered_unicode"],
                                                'tagline': Global_video_dict["ListItem_Tagline_unicode"],
                                                'sorttitle': Global_video_dict["ListItem_SortTitle_unicode"],
