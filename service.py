@@ -201,115 +201,115 @@ class BIUplayer(xbmc.Player):
 
             # Use Files.GetFileDetails to see if it is a movie or a tv episode video
             # Also gives us the DBID.
-            #try:
-            JSON_req = {"jsonrpc": "2.0",
-                        "method": "Files.GetFileDetails",
-                        "params": {"file": strmfile_unicode,
-                                   "media": "video",},
-                        "id": "1"}
-            log('JSON_req string = %s' % json.dumps(JSON_req))
-            JSON_result = utils.executeJSON(JSON_req)
-            log('JSON Files.GetFileDetails result = %s' % JSON_result)
-            # Is it a movie or a tv show?
-            Global_BIU_vars["Video_Type"] = JSON_result["result"]["filedetails"]["type"]
-            if Global_BIU_vars["Video_Type"] not in [u'unknown', u'movie', u'episode']:
-                log('Error receiving JSON Files.GetFileDetails info!!')
-                return
-            # We can extract the DBID from this request
-            Global_BIU_vars["Video_ID"] = JSON_result["result"]["filedetails"]["id"]
-            log('DBID = %s' % str(Global_BIU_vars["Video_ID"]))
-            
-
-            # Now get all properties, needs seperate call for movie or episode
-            if Global_BIU_vars["Video_Type"] ==  u'episode': # we have a tv show
-                log('We play a episode.')
-                # Get all the properties of the tv show
+            try:
                 JSON_req = {"jsonrpc": "2.0",
-                            "method": "VideoLibrary.GetEpisodeDetails",
-                            "params": {"episodeid": Global_BIU_vars["Video_ID"],
-                                       "properties": ["title", "plot", "votes", "rating", "writer", "streamdetails",
-                                                      "firstaired", "playcount", "runtime", "director",
-                                                      "productioncode", "season", "episode", "cast", 
-                                                      "originaltitle", "showtitle", "lastplayed",
-                                                      "thumbnail", "file", "resume", "tvshowid", "userrating",
-                                                      "dateadded", "uniqueid", "art", "fanart"]},
+                            "method": "Files.GetFileDetails",
+                            "params": {"file": strmfile_unicode,
+                                       "media": "video",},
                             "id": "1"}
                 log('JSON_req string = %s' % json.dumps(JSON_req))
                 JSON_result = utils.executeJSON(JSON_req)
-                log('JSON VideoLibrary.GetEpisodeDetails result = %s' % JSON_result)
-                # Extract the needed info from JSON_result and put it in our video_dict
-                Global_video_dict["ListItem_Art_Thumb_unicode"] = JSON_result["result"]["episodedetails"]["thumbnail"]
-                Global_video_dict["ListItem_Art_Poster_unicode"] =  JSON_result["result"]["episodedetails"]["art"]["tvshow.poster"]
-                log('poster: %s' % Global_video_dict["ListItem_Art_Poster_unicode"])
-                Global_video_dict["ListItem_Cast_unicode"] = JSON_result["result"]["episodedetails"]["cast"]
-                Global_video_dict["ListItem_Title_unicode"] = JSON_result["result"]["episodedetails"]["title"]
-                Global_video_dict["ListItem_TVShowTitle_unicode"] = JSON_result["result"]["episodedetails"]["showtitle"]
-                Global_video_dict["ListItem_Season_unicode"] = JSON_result["result"]["episodedetails"]["season"]
-                Global_video_dict["ListItem_Episode_unicode"] = JSON_result["result"]["episodedetails"]["episode"]
-                Global_video_dict["ListItem_UserRating_unicode"] =  JSON_result["result"]["episodedetails"]["userrating"]
-                Global_video_dict["ListItem_Plot_unicode"] = JSON_result["result"]["episodedetails"]["plot"]
-                Global_video_dict["ListItem_FirstAired_unicode"] = JSON_result["result"]["episodedetails"]["firstaired"]
-                Global_video_dict["ListItem_DateAdded_unicode"] = JSON_result["result"]["episodedetails"]["dateadded"]
-                Global_video_dict["ListItem_LastPlayed_unicode"] = JSON_result["result"]["episodedetails"]["lastplayed"]
-                Global_video_dict["ListItem_Votes_unicode"] = JSON_result["result"]["episodedetails"]["votes"]
-                Global_video_dict["ListItem_OriginalTitle_unicode"] = JSON_result["result"]["episodedetails"]["originaltitle"]
-                Global_video_dict["ListItem_Rating_unicode"] = JSON_result["result"]["episodedetails"]["rating"]
-                Global_video_dict["ListItem_Writer_unicode"] = JSON_result["result"]["episodedetails"]["writer"]
-                Global_video_dict["ListItem_Director_unicode"] = JSON_result["result"]["episodedetails"]["director"]
-                Global_video_dict["ListItem_StreamDetails_unicode"] = JSON_result["result"]["episodedetails"]["streamdetails"]
-                # If playcount = 0 then the video is not watched, if playcount > 0 then the video is watched
-                Global_BIU_vars["PlayCount"] = JSON_result["result"]["episodedetails"]["playcount"]
-                # These properties are not yet used:
-                # runtime, , productioncode, ratings, resume, file, tvshowid, uniqueid, art, fanart 
-                log('Streamdetails are %s' % Global_video_dict["ListItem_StreamDetails_unicode"])
-            elif Global_BIU_vars["Video_Type"] ==  u'movie': # we have a movie
-                log('We play a movie.')
-                # Get all the properties of the movie
-                JSON_req = {"jsonrpc": "2.0",
-                            "method": "VideoLibrary.GetMovieDetails",
-                            "params": {"movieid": Global_BIU_vars["Video_ID"],
-                                       "properties": ["title", "plot", "votes", "rating", "streamdetails",
-                                                      "studio", "playcount", "runtime", "director",
-                                                      "genre", "trailer", "tagline", "plotoutline",
-                                                      "mpaa", "imdbnumber", "sorttitle", "setid",
-                                                      "originaltitle", "lastplayed", "writer", "premiered",
-                                                      "thumbnail", "file", "resume", "userrating",
-                                                      "dateadded", "art", "fanart", "cast"]},
-                            "id": "1"}
-                log('JSON_req string = %s' % json.dumps(JSON_req))
-                JSON_result = utils.executeJSON(JSON_req)
-                log('JSON VideoLibrary.GetMovieDetails result = %s' % JSON_result)
-                Global_video_dict["ListItem_Cast_unicode"] = JSON_result["result"]["moviedetails"]["cast"]
-                Global_video_dict["ListItem_Title_unicode"] = JSON_result["result"]["moviedetails"]["title"]
-                Global_video_dict["ListItem_Plot_unicode"] = JSON_result["result"]["moviedetails"]["plot"]
-                Global_video_dict["ListItem_Votes_unicode"] = JSON_result["result"]["moviedetails"]["votes"]
-                Global_video_dict["ListItem_Rating_unicode"] = JSON_result["result"]["moviedetails"]["rating"]
-                Global_video_dict["ListItem_StreamDetails_unicode"] = JSON_result["result"]["moviedetails"]["streamdetails"]
-                Global_video_dict["ListItem_Studio_unicode"] = JSON_result["result"]["moviedetails"]["studio"]
-                Global_video_dict["ListItem_Director_unicode"] =  JSON_result["result"]["moviedetails"]["director"]
-                Global_video_dict["ListItem_Genre_unicode"] =  JSON_result["result"]["moviedetails"]["genre"]
-                log('genre = %s' % Global_video_dict["ListItem_Genre_unicode"])
-                Global_video_dict["ListItem_Trailer_unicode"] =  JSON_result["result"]["moviedetails"]["trailer"]
-                Global_video_dict["ListItem_Tagline_unicode"] =  JSON_result["result"]["moviedetails"]["tagline"]
-                Global_video_dict["ListItem_mpaa_unicode"] =  JSON_result["result"]["moviedetails"]["mpaa"]
-                Global_video_dict["ListItem_PlotOutline_unicode"] = JSON_result["result"]["moviedetails"]["plotoutline"]
-                Global_video_dict["ListItem_imdbNumber_unicode"] =  JSON_result["result"]["moviedetails"]["imdbnumber"]
-                Global_video_dict["ListItem_SortTitle_unicode"] =  JSON_result["result"]["moviedetails"]["sorttitle"]
-                Global_video_dict["ListItem_setID_unicode"] =  JSON_result["result"]["moviedetails"]["setid"]
-                Global_video_dict["ListItem_OriginalTitle_unicode"] =  JSON_result["result"]["moviedetails"]["originaltitle"]
-                Global_video_dict["ListItem_LastPlayed_unicode"] =  JSON_result["result"]["moviedetails"]["lastplayed"]
-                Global_video_dict["ListItem_Writer_unicode"] =  JSON_result["result"]["moviedetails"]["writer"]
-                Global_video_dict["ListItem_Premiered_unicode"] =  JSON_result["result"]["moviedetails"]["premiered"]
-                Global_video_dict["ListItem_UserRating_unicode"] =  JSON_result["result"]["moviedetails"]["userrating"]
-                Global_video_dict["ListItem_DateAdded_unicode"] =  JSON_result["result"]["moviedetails"]["dateadded"]
-                Global_video_dict["ListItem_Art_Thumb_unicode"] =  JSON_result["result"]["moviedetails"]["thumbnail"]
-                Global_video_dict["ListItem_Art_Poster_unicode"] =  JSON_result["result"]["moviedetails"]["art"]["poster"]
-                # If playcount = 0 then the video is not watched, if playcount > 0 then the video is watched
-                Global_BIU_vars["PlayCount"] = JSON_result["result"]["moviedetails"]["playcount"]
-                # These properties are not yet used:
-                # runtime, file, resume, art , fanart
+                log('JSON Files.GetFileDetails result = %s' % JSON_result)
+                # Is it a movie or a tv show?
+                Global_BIU_vars["Video_Type"] = JSON_result["result"]["filedetails"]["type"]
+                if Global_BIU_vars["Video_Type"] not in [u'unknown', u'movie', u'episode']:
+                    log('Error receiving JSON Files.GetFileDetails info!!')
+                    return
+                # We can extract the DBID from this request
+                Global_BIU_vars["Video_ID"] = JSON_result["result"]["filedetails"]["id"]
+                log('DBID = %s' % str(Global_BIU_vars["Video_ID"]))
                 
-            '''except:
+
+                # Now get all properties, needs seperate call for movie or episode
+                if Global_BIU_vars["Video_Type"] ==  u'episode': # we have a tv show
+                    log('We play a episode.')
+                    # Get all the properties of the tv show
+                    JSON_req = {"jsonrpc": "2.0",
+                                "method": "VideoLibrary.GetEpisodeDetails",
+                                "params": {"episodeid": Global_BIU_vars["Video_ID"],
+                                           "properties": ["title", "plot", "votes", "rating", "writer", "streamdetails",
+                                                          "firstaired", "playcount", "runtime", "director",
+                                                          "productioncode", "season", "episode", "cast", 
+                                                          "originaltitle", "showtitle", "lastplayed",
+                                                          "thumbnail", "file", "resume", "tvshowid", "userrating",
+                                                          "dateadded", "uniqueid", "art", "fanart"]},
+                                "id": "1"}
+                    log('JSON_req string = %s' % json.dumps(JSON_req))
+                    JSON_result = utils.executeJSON(JSON_req)
+                    log('JSON VideoLibrary.GetEpisodeDetails result = %s' % JSON_result)
+                    # Extract the needed info from JSON_result and put it in our video_dict
+                    Global_video_dict["ListItem_Art_Thumb_unicode"] = JSON_result["result"]["episodedetails"]["thumbnail"]
+                    Global_video_dict["ListItem_Art_Poster_unicode"] =  JSON_result["result"]["episodedetails"]["art"]["tvshow.poster"]
+                    log('poster: %s' % Global_video_dict["ListItem_Art_Poster_unicode"])
+                    Global_video_dict["ListItem_Cast_unicode"] = JSON_result["result"]["episodedetails"]["cast"]
+                    Global_video_dict["ListItem_Title_unicode"] = JSON_result["result"]["episodedetails"]["title"]
+                    Global_video_dict["ListItem_TVShowTitle_unicode"] = JSON_result["result"]["episodedetails"]["showtitle"]
+                    Global_video_dict["ListItem_Season_unicode"] = JSON_result["result"]["episodedetails"]["season"]
+                    Global_video_dict["ListItem_Episode_unicode"] = JSON_result["result"]["episodedetails"]["episode"]
+                    Global_video_dict["ListItem_UserRating_unicode"] =  JSON_result["result"]["episodedetails"]["userrating"]
+                    Global_video_dict["ListItem_Plot_unicode"] = JSON_result["result"]["episodedetails"]["plot"]
+                    Global_video_dict["ListItem_FirstAired_unicode"] = JSON_result["result"]["episodedetails"]["firstaired"]
+                    Global_video_dict["ListItem_DateAdded_unicode"] = JSON_result["result"]["episodedetails"]["dateadded"]
+                    Global_video_dict["ListItem_LastPlayed_unicode"] = JSON_result["result"]["episodedetails"]["lastplayed"]
+                    Global_video_dict["ListItem_Votes_unicode"] = JSON_result["result"]["episodedetails"]["votes"]
+                    Global_video_dict["ListItem_OriginalTitle_unicode"] = JSON_result["result"]["episodedetails"]["originaltitle"]
+                    Global_video_dict["ListItem_Rating_unicode"] = JSON_result["result"]["episodedetails"]["rating"]
+                    Global_video_dict["ListItem_Writer_unicode"] = JSON_result["result"]["episodedetails"]["writer"]
+                    Global_video_dict["ListItem_Director_unicode"] = JSON_result["result"]["episodedetails"]["director"]
+                    Global_video_dict["ListItem_StreamDetails_unicode"] = JSON_result["result"]["episodedetails"]["streamdetails"]
+                    # If playcount = 0 then the video is not watched, if playcount > 0 then the video is watched
+                    Global_BIU_vars["PlayCount"] = JSON_result["result"]["episodedetails"]["playcount"]
+                    # These properties are not yet used:
+                    # runtime, , productioncode, ratings, resume, file, tvshowid, uniqueid, art, fanart 
+                    log('Streamdetails are %s' % Global_video_dict["ListItem_StreamDetails_unicode"])
+                elif Global_BIU_vars["Video_Type"] ==  u'movie': # we have a movie
+                    log('We play a movie.')
+                    # Get all the properties of the movie
+                    JSON_req = {"jsonrpc": "2.0",
+                                "method": "VideoLibrary.GetMovieDetails",
+                                "params": {"movieid": Global_BIU_vars["Video_ID"],
+                                           "properties": ["title", "plot", "votes", "rating", "streamdetails",
+                                                          "studio", "playcount", "runtime", "director",
+                                                          "genre", "trailer", "tagline", "plotoutline",
+                                                          "mpaa", "imdbnumber", "sorttitle", "setid",
+                                                          "originaltitle", "lastplayed", "writer", "premiered",
+                                                          "thumbnail", "file", "resume", "userrating",
+                                                          "dateadded", "art", "fanart", "cast"]},
+                                "id": "1"}
+                    log('JSON_req string = %s' % json.dumps(JSON_req))
+                    JSON_result = utils.executeJSON(JSON_req)
+                    log('JSON VideoLibrary.GetMovieDetails result = %s' % JSON_result)
+                    Global_video_dict["ListItem_Cast_unicode"] = JSON_result["result"]["moviedetails"]["cast"]
+                    Global_video_dict["ListItem_Title_unicode"] = JSON_result["result"]["moviedetails"]["title"]
+                    Global_video_dict["ListItem_Plot_unicode"] = JSON_result["result"]["moviedetails"]["plot"]
+                    Global_video_dict["ListItem_Votes_unicode"] = JSON_result["result"]["moviedetails"]["votes"]
+                    Global_video_dict["ListItem_Rating_unicode"] = JSON_result["result"]["moviedetails"]["rating"]
+                    Global_video_dict["ListItem_StreamDetails_unicode"] = JSON_result["result"]["moviedetails"]["streamdetails"]
+                    Global_video_dict["ListItem_Studio_unicode"] = JSON_result["result"]["moviedetails"]["studio"]
+                    Global_video_dict["ListItem_Director_unicode"] =  JSON_result["result"]["moviedetails"]["director"]
+                    Global_video_dict["ListItem_Genre_unicode"] =  JSON_result["result"]["moviedetails"]["genre"]
+                    log('genre = %s' % Global_video_dict["ListItem_Genre_unicode"])
+                    Global_video_dict["ListItem_Trailer_unicode"] =  JSON_result["result"]["moviedetails"]["trailer"]
+                    Global_video_dict["ListItem_Tagline_unicode"] =  JSON_result["result"]["moviedetails"]["tagline"]
+                    Global_video_dict["ListItem_mpaa_unicode"] =  JSON_result["result"]["moviedetails"]["mpaa"]
+                    Global_video_dict["ListItem_PlotOutline_unicode"] = JSON_result["result"]["moviedetails"]["plotoutline"]
+                    Global_video_dict["ListItem_imdbNumber_unicode"] =  JSON_result["result"]["moviedetails"]["imdbnumber"]
+                    Global_video_dict["ListItem_SortTitle_unicode"] =  JSON_result["result"]["moviedetails"]["sorttitle"]
+                    Global_video_dict["ListItem_setID_unicode"] =  JSON_result["result"]["moviedetails"]["setid"]
+                    Global_video_dict["ListItem_OriginalTitle_unicode"] =  JSON_result["result"]["moviedetails"]["originaltitle"]
+                    Global_video_dict["ListItem_LastPlayed_unicode"] =  JSON_result["result"]["moviedetails"]["lastplayed"]
+                    Global_video_dict["ListItem_Writer_unicode"] =  JSON_result["result"]["moviedetails"]["writer"]
+                    Global_video_dict["ListItem_Premiered_unicode"] =  JSON_result["result"]["moviedetails"]["premiered"]
+                    Global_video_dict["ListItem_UserRating_unicode"] =  JSON_result["result"]["moviedetails"]["userrating"]
+                    Global_video_dict["ListItem_DateAdded_unicode"] =  JSON_result["result"]["moviedetails"]["dateadded"]
+                    Global_video_dict["ListItem_Art_Thumb_unicode"] =  JSON_result["result"]["moviedetails"]["thumbnail"]
+                    Global_video_dict["ListItem_Art_Poster_unicode"] =  JSON_result["result"]["moviedetails"]["art"]["poster"]
+                    # If playcount = 0 then the video is not watched, if playcount > 0 then the video is watched
+                    Global_BIU_vars["PlayCount"] = JSON_result["result"]["moviedetails"]["playcount"]
+                    # These properties are not yet used:
+                    # runtime, file, resume, art , fanart
+                    
+            except:
                 log('Error getting JSON response, media is probably unknown!!')
                 Global_video_dict["ListItem_Art_Thumb_unicode"] = ""
                 Global_video_dict["ListItem_Art_Poster_unicode"] = ""
@@ -326,7 +326,7 @@ class BIUplayer(xbmc.Player):
                 Global_video_dict["ListItem_LastPlayed_unicode"] = ""
                 Global_video_dict["ListItem_Cast_unicode"] = ""
                 Global_BIU_vars["PlayCount"] = 0
-                Global_BIU_vars["Video_ID"] = -1'''
+                Global_BIU_vars["Video_ID"] = -1
 
             # Was this video played already?
             log('Playcount = %s' % Global_BIU_vars["PlayCount"])
@@ -467,14 +467,6 @@ class BIUplayer(xbmc.Player):
                 log('Name: %s' % item["name"])
                 actor_list.append((item["name"], item["role"]))
 
-            # Convert genre list "[u'Comedy', u'Drama', u'Music', u'Mystery']" into string
-            # like: "Comedy / Drama / Music / Mystery"
-            Genre_string = ""
-            for item in Global_video_dict["ListItem_Genre_unicode"]:
-                Genre_string = Genre_string + item + ' / '
-            Genre_string = Genre_string[:-3]
-            log('Genre = %s' % Genre_string)
-
             # Set the player/videoplayer infolabels
             # First infolabels used for both movie and tv shows
             mylistitems.setInfo('video', {'mediatype': Global_BIU_vars["Video_Type"],
@@ -492,6 +484,14 @@ class BIUplayer(xbmc.Player):
                                           'originaltitle': Global_video_dict["ListItem_OriginalTitle_unicode"]})
             # Movie specific infolabels
             if Global_BIU_vars["Video_Type"] ==  u'movie':
+                # Convert genre list "[u'Comedy', u'Drama', u'Music', u'Mystery']" into string
+                # like: "Comedy / Drama / Music / Mystery"
+                Genre_string = ""
+                for item in Global_video_dict["ListItem_Genre_unicode"]:
+                    Genre_string = Genre_string + item + ' / '
+                Genre_string = Genre_string[:-3]
+                log('Genre = %s' % Genre_string)
+                
                 mylistitems.setInfo('video', { 'plotoutline': Global_video_dict["ListItem_PlotOutline_unicode"],
                                                'mpaa': Global_video_dict["ListItem_mpaa_unicode"],
                                                'studio': Global_video_dict["ListItem_Studio_unicode"],
