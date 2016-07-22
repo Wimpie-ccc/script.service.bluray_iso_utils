@@ -21,6 +21,7 @@ import urllib
 import xbmc, xbmcgui, xbmcaddon, xbmcvfs
 import resources.lib.utils as utils
 from resources.lib.utils import log
+from resources.lib.utils import settings
 import sys, re, json, time
 
 ADDON        = utils.ADDON
@@ -43,31 +44,15 @@ Global_BIU_vars = {"Default_stop_time": 9999999,    # No video is that long
                    "Video_ID": -1,                  # Needed for JSON calls
                    "Resume_Time": 0}                # In seconds where we can resume
 Global_video_dict = {}
-
-# This class is the interface between the internal default settings and the user.
-# The user adjust the settings to his/her likings in Kodi. This class will make
-# sure that the addon knows that the user changed a setting.
-class Mysettings():
-    # Init with some default values for the addon
-    def init(self):
-        self.service_enabled = ADDON.getSetting('enabled') == 'true'
-        log('Init - enabled: %s' % self.service_enabled)
     
-    def __init__(self):
-        self.init()
-
-    # Read setting that user can change from within Kodi    
-    def readSettings(self):
-        self.service_enabled = ADDON.getSetting('enabled')
-        log('enabled: %s' % self.service_enabled)
-
-# Needed so we can use it in the next class.
-settings = Mysettings()
-
 # Our monitor class
 class BIUmonitor(xbmc.Monitor):
     def __init__(self):
         xbmc.Monitor.__init__(self)
+        # Init settings
+        settings.init()
+        settings.readSettings()
+        
 
     # This is the function that signals that the user just changed a setting.
     # First default settings will be loaded, then we read the user-defined settings and
@@ -100,12 +85,13 @@ class BIUplayer(xbmc.Player):
         global Global_BIU_vars
         
         log('Checking if Wachted flag needs to be set.')
+
         Percent_played = (100 * (Global_BIU_vars["Current_video_time"] - Global_BIU_vars["Start_time"])) / Global_BIU_vars["Duration"]
         log('Percent played = %s' % str(Percent_played))
         if Percent_played > 95:
             # Increase playcount with 1
             Global_BIU_vars["PlayCount"] = Global_BIU_vars["PlayCount"] + 1
-
+            
         # Update the Kodi library through JSON
         if Global_BIU_vars["Video_Type"] == 'movie':
             jsonmethod = "VideoLibrary.SetMovieDetails"; idfieldname = "movieid"
@@ -114,7 +100,7 @@ class BIUplayer(xbmc.Player):
         JSON_req = {"jsonrpc": "2.0",
                     "method": jsonmethod,
                     "params": {idfieldname: Global_BIU_vars["Video_ID"],
-                                "playcount": Global_BIU_vars["PlayCount"],
+                               "playcount": Global_BIU_vars["PlayCount"],
                                "lastplayed": utils.TimeStamptosqlDateTime(int(time.time()))},
                     "id": 1}
         JSON_result = utils.executeJSON(JSON_req)
@@ -126,22 +112,23 @@ class BIUplayer(xbmc.Player):
     # This event handler gets called when the video is played all the way to the end.
     # Check here if we need to set the watched flag for this video.
     def onPlayBackEnded(self):
-        log('Playback ended.')
+        if settings.service_enabled == 'true':
+            log('Playback ended.')
 
-        # Check  if the watched flag needs to be set
-        self.SetWatchedFlagIfNeeded()
+            # Check  if the watched flag needs to be set
+            self.SetWatchedFlagIfNeeded()
 
     # This event handler gets called when the user or a script stops the video.
     # Check here if we need to set the watched flag for this video.
     def onPlayBackStopped(self):
-        # Needed for watched state and resumepoint
-        global Global_BIU_vars
-        log('Playback stopped by user/service')
+        if settings.service_enabled == 'true':
+            # Needed for watched state and resumepoint
+            global Global_BIU_vars
+            log('Playback stopped by user/service')
         
-        # Check  if the watched flag needs to be set
-        self.SetWatchedFlagIfNeeded()
-
-        # Set stoptime for later use as resumepoint
+            # Check  if the watched flag needs to be set
+            self.SetWatchedFlagIfNeeded()
+            # Set stoptime for later use as resumepoint
     
     def onPlayBackStarted(self):
         # Needed to get stoptime to the deamon, and for the watched state
@@ -150,9 +137,10 @@ class BIUplayer(xbmc.Player):
 		
         # See what file we are now playing. 
         Nowplaying = self.getPlayingFile()
-        log('Playing File : %s'% Nowplaying)
+        if settings.service_enabled == 'true':
+            log('Playing File : %s'% Nowplaying)
         # If it is our special video, then we need to redirect xbmc.player to the correct bluray playlist.
-        if (settings.service_enabled and Nowplaying == "special://home/addons/script.service.bluray_iso_utils/resources/media/BIU_Black_Animation.720p.mp4"):
+        if ((settings.service_enabled == 'true') and Nowplaying == "special://home/addons/script.service.bluray_iso_utils/resources/media/BIU_Black_Animation.720p.mp4"):
         #if True:
             # We are playing a .strm file!!
             #self.stop()
@@ -191,6 +179,8 @@ class BIUplayer(xbmc.Player):
             # 10 times should be enough, if not break
             if (ListItem_Path_unicode == "" or ListItem_FileName_unicode == ""):
                 log('Error receiving getInfoLabel info!!')
+                # Stop playing our black video
+                self.stop()
                 return
 
             # First validatepath to get the slashes OK,
@@ -248,6 +238,7 @@ class BIUplayer(xbmc.Player):
                     Global_video_dict["ListItem_Episode_unicode"] = JSON_result["result"]["episodedetails"]["episode"]
                     Global_video_dict["ListItem_UserRating_unicode"] =  JSON_result["result"]["episodedetails"]["userrating"]
                     Global_video_dict["ListItem_Plot_unicode"] = JSON_result["result"]["episodedetails"]["plot"]
+                    Global_video_dict["ListItem_RunTime_unicode"] = JSON_result["result"]["episodedetails"]["runtime"]
                     Global_video_dict["ListItem_FirstAired_unicode"] = JSON_result["result"]["episodedetails"]["firstaired"]
                     Global_video_dict["ListItem_DateAdded_unicode"] = JSON_result["result"]["episodedetails"]["dateadded"]
                     Global_video_dict["ListItem_LastPlayed_unicode"] = JSON_result["result"]["episodedetails"]["lastplayed"]
@@ -260,7 +251,7 @@ class BIUplayer(xbmc.Player):
                     # If playcount = 0 then the video is not watched, if playcount > 0 then the video is watched
                     Global_BIU_vars["PlayCount"] = JSON_result["result"]["episodedetails"]["playcount"]
                     # These properties are not yet used:
-                    # runtime, , productioncode, ratings, resume, file, tvshowid, uniqueid, art, fanart 
+                    # , , productioncode, ratings, resume, file, tvshowid, uniqueid, art, fanart 
                     log('Streamdetails are %s' % Global_video_dict["ListItem_StreamDetails_unicode"])
                 elif Global_BIU_vars["Video_Type"] ==  u'movie': # we have a movie
                     log('We play a movie.')
@@ -296,6 +287,7 @@ class BIUplayer(xbmc.Player):
                     Global_video_dict["ListItem_imdbNumber_unicode"] =  JSON_result["result"]["moviedetails"]["imdbnumber"]
                     Global_video_dict["ListItem_SortTitle_unicode"] =  JSON_result["result"]["moviedetails"]["sorttitle"]
                     Global_video_dict["ListItem_setID_unicode"] =  JSON_result["result"]["moviedetails"]["setid"]
+                    Global_video_dict["ListItem_RunTime_unicode"] =  JSON_result["result"]["moviedetails"]["runtime"]
                     Global_video_dict["ListItem_OriginalTitle_unicode"] =  JSON_result["result"]["moviedetails"]["originaltitle"]
                     Global_video_dict["ListItem_LastPlayed_unicode"] =  JSON_result["result"]["moviedetails"]["lastplayed"]
                     Global_video_dict["ListItem_Writer_unicode"] =  JSON_result["result"]["moviedetails"]["writer"]
@@ -307,7 +299,7 @@ class BIUplayer(xbmc.Player):
                     # If playcount = 0 then the video is not watched, if playcount > 0 then the video is watched
                     Global_BIU_vars["PlayCount"] = JSON_result["result"]["moviedetails"]["playcount"]
                     # These properties are not yet used:
-                    # runtime, file, resume, art , fanart
+                    # , file, resume, art , fanart
                     
             except:
                 log('Error getting JSON response, media is probably unknown!!')
@@ -477,6 +469,7 @@ class BIUplayer(xbmc.Player):
                                           'writer' : Global_video_dict["ListItem_Writer_unicode"],
                                           'director': Global_video_dict["ListItem_Director_unicode"],
                                           'lastplayed': Global_video_dict["ListItem_LastPlayed_unicode"],
+                                          'runtime': Global_video_dict["ListItem_RunTime_unicode"],
                                           'dateadded': Global_video_dict["ListItem_DateAdded_unicode"],
                                           'userrating': Global_video_dict["ListItem_UserRating_unicode"],
                                           'playcount': Global_BIU_vars["PlayCount"],
@@ -520,7 +513,7 @@ class BIUplayer(xbmc.Player):
         # Here we have the second pass of our service.
         # We detect this by looking at the filename of the current playing file.
         # If it includes ".BIUfiles" then we have a hit.
-        if (settings.service_enabled and ('.BIUfiles' in Nowplaying)):
+        if ((settings.service_enabled == 'true') and ('.BIUfiles' in Nowplaying)):
             log('Second pass of the service script')
 
             # If a audiostream number is set in the .strm file,
@@ -629,8 +622,8 @@ class BIUplayer(xbmc.Player):
 class Main:
     def __init__(self):
         self._init_vars()
-        if (not settings.service_enabled):
-            log('Service not enabled')
+        if settings.service_enabled == 'false':
+            xbmc.log('%s: Service not enabled' % ADDONNAME, level=xbmc.LOGDEBUG)
         self._daemon()
 
     def _init_vars(self):
@@ -648,7 +641,7 @@ class Main:
                 break
             # This code is needed for checking if we need to stop the player because we
             # reached the stoptime (end of video).
-            if BIUplayer().isPlayingVideo():
+            if ((settings.service_enabled == 'true') and (BIUplayer().isPlayingVideo())):
                 # We play a video, track current time for watched state
                 Global_BIU_vars["Current_video_time"] = BIUplayer().getTime()
                 log('Daemon: Current video time:  = %s' % str(Global_BIU_vars["Current_video_time"]))
@@ -661,6 +654,6 @@ class Main:
 
 # Real start of the program
 if (__name__ == "__main__"):
-    log('version %s started' % ADDONVERSION)
+    xbmc.log('%s: version %s started' % (ADDONNAME, ADDONVERSION), level=xbmc.LOGDEBUG)
     main = Main()
-    log('version %s stopped' % ADDONVERSION)
+    xbmc.log('%s: version %s stopped' % (ADDONNAME, ADDONVERSION), level=xbmc.LOGDEBUG)
