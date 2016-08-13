@@ -33,7 +33,7 @@ You need to add a directory where the bluray iso files are stored. This director
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <directorydetails>
-  <video filename="s01e01.BIUvideo.mp4">
+  <video filename="s01e01.BluRay.BIUvideo.mp4">
     <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
     <playlist>00001</playlist>
     <starttime></starttime>
@@ -41,16 +41,24 @@ You need to add a directory where the bluray iso files are stored. This director
     <audiochannel></audiochannel>
     <subtitlechannel></subtitlechannel>
   </video>
-  <video filename="s01e02.BIUvideo.mp4">
+  <video filename="s01e02.BluRay.BIUvideo.mp4">
     <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
     <playlist>00002</playlist>
-    <starttime>00:00:30</starttime>
-    <stoptime></stoptime>
-    <audiochannel></audiochannel>
-    <subtitlechannel>1</subtitlechannel>
   </video>
-</directorydetails>
-```
+  <video filename="s01e03.BluRay.BIUvideo.mp4">
+    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+    <playlist>00003</playlist>
+    <starttime>00:01:00</starttime>
+  </video>
+  <video filename="s01e07.BluRay.BIUvideo.mp4">
+    <isofile>.BIUfiles/Firefly_Disc_02.iso</isofile>
+    <playlist>00004</playlist>
+    <starttime>00:45:42</starttime>
+    <stoptime>01:31:02</stoptime>
+    <audiochannel></audiochannel>
+    <subtitlechannel>0</subtitlechannel>
+  </video>
+</directorydetails>```
 
 
 ![alt text](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/TV-file-structure.png)
