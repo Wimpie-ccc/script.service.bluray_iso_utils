@@ -1,7 +1,7 @@
 # script.service.bluray_iso_utils
 Kodi addon - Used to make all videos in a bluray iso file available and scrapeable to Kodi
 
-# Description
+## Description
 This addon will enable the Kodi user to access all videos on a bluray iso file.
 
 With this addon you are able to:
@@ -9,16 +9,16 @@ With this addon you are able to:
 - are able to use video extras with all the extras on the bluray iso
 - can set default audio and subtitle streams
 - enter a multiple movie iso file correctly in the Kodi library, each movie will have it's own entrypoint
-- enter different cut's of a movie correctly in the Kodi library (from 1 bluray iso file)
+- enter different cut's of a movie correctly in the Kodi library (from 1 bluray iso file), each movie will have it's own entrypoint
 - skip the recap ("Previously on ...") on your tv shows
 - should work with a mix of Kodi devices (win 7, Openelec, ...)
 
 This is done through the use of .strm files. No symlinks need to be made. 
 
-#Usage
-Installng
+## Usage
+Installing
 -----------
-Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file (rename the zipfile to: "script.service.bluray_iso_utils.zip" before installing AND rename root dir in zip file to "script.service.bluray_iso_utils" before installing.). At the moment you need no settings to edit. Requires Kodi 16 min. 
+Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file (rename the zipfile to: "script.service.bluray_iso_utils.zip" AND rename root dir in zip file to "script.service.bluray_iso_utils" before installing.). At the moment you need no settings to edit (inside Kodi). Requires Kodi 17 min. 
 
 Directory structure
 --------------------
