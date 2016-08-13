@@ -58,7 +58,8 @@ You need to add a directory where the bluray iso files are stored. This director
     <audiochannel></audiochannel>
     <subtitlechannel>0</subtitlechannel>
   </video>
-</directorydetails>```
+</directorydetails>
+```
 
 
 ![alt text](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/TV-file-structure.png)
