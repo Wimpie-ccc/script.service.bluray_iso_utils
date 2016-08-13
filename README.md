@@ -16,7 +16,7 @@ With this addon you are able to:
 This is done through the use of .strm files. No symlinks need to be made. 
 
 ## Usage
-Installing
+### Installing
 -----------
 Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file (rename the zipfile to: "script.service.bluray_iso_utils.zip" AND rename root dir in zip file to "script.service.bluray_iso_utils" before installing.). At the moment you need no settings to edit (inside Kodi). Requires Kodi 17 min. 
 
