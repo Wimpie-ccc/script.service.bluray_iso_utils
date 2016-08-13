@@ -26,6 +26,46 @@ This addon is developed with the "default" directory layout of Kodi in mind  [se
 
 You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia."). Kodi wil NOT scan these iso files. 
 
+'''xml
+<?xml version="1.0" encoding="utf-8"?>
+<directorydetails>
+  <video filename="s00e02.BIUvideo.mp4">
+    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+    <playlist>00006</playlist>
+    <starttime></starttime>
+    <stoptime></stoptime>
+    <audiochannel></audiochannel>
+    <subtitlechannel></subtitlechannel>
+  </video>
+  <video filename="s00e04.BIUvideo.mp4">
+    <isofile>.BIUfiles/Firefly.s01e05.s01e06.s01e07.s01e08.s01e09.BluRay.iso</isofile>
+    <playlist>00007</playlist>
+    <starttime></starttime>
+    <stoptime></stoptime>
+    <audiochannel></audiochannel>
+    <subtitlechannel></subtitlechannel>
+  </video>
+  <video filename="s01e01.BIUvideo.mp4">
+    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+    <playlist>00001</playlist>
+    <starttime>00:10:00</starttime>
+    <stoptime>00:11:00</stoptime>
+    <audiochannel></audiochannel>
+    <subtitlechannel></subtitlechannel>
+  </video>
+  <video filename="s01e02.BIUvideo.mp4">
+    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+    <playlist>00002</playlist>
+    <starttime>00:00:30</starttime>
+    <stoptime></stoptime>
+    <audiochannel></audiochannel>
+    <subtitlechannel>1</subtitlechannel>
+  </video>
+  <video filename="s01e03.BIUvideo.mp4">
+    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+'''
+
+
 ![alt text](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/TV-file-structure.png)
 
 The [.strm files](https://github.com/Wimpie-ccc/helperfiles/blob/master/s01e01.strm) have following structure:
