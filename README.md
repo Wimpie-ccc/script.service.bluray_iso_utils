@@ -18,8 +18,8 @@ This is done through the use of .xml and dummy video files. No symlinks need to 
 ## Installing
 Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file (rename the zipfile to: "script.service.bluray_iso_utils.zip" AND rename root dir in zip file to "script.service.bluray_iso_utils" before installing.). At the moment you need no settings to edit (inside Kodi). Requires Kodi 17 min. 
 
-A dummy, 12 seconds long, animation can be downloaded here.
-Here you can get a example BIUinfo.xml file.
+A dummy, 12 seconds long, animation can be downloaded [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true).
+[Here](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml) you can get a example BIUinfo.xml file.
 
 ## Usage
 ### Directory structure
