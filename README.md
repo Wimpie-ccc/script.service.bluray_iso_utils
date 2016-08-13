@@ -5,22 +5,21 @@ Kodi addon - Used to make all videos in a bluray iso file available and scrapeab
 This addon will enable the Kodi user to access all videos on a bluray iso file.
 
 With this addon you are able to:
-- give each tv show episode an individual entry in the Kodi library (as if they are .mkv files)
+- import tv shows and movies on bluray iso's in the Kodi library (as if they are .mkv files)
 - are able to use video extras with all the extras on the bluray iso
-- can set default audio and subtitle streams
+- can set default audio and subtitle streams (usefull when kodi shows 'Unknown' as language)
 - enter a multiple movie iso file correctly in the Kodi library, each movie will have it's own entrypoint
 - enter different cut's of a movie correctly in the Kodi library (from 1 bluray iso file), each movie will have it's own entrypoint
 - skip the recap ("Previously on ...") on your tv shows
 - should work with a mix of Kodi devices (win 7, Openelec, ...)
 
-This is done through the use of .strm files. No symlinks need to be made. 
+This is done through the use of .xml and dummy video files. No symlinks need to be made. 
 
 ## Usage
 ### Installing
 Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file (rename the zipfile to: "script.service.bluray_iso_utils.zip" AND rename root dir in zip file to "script.service.bluray_iso_utils" before installing.). At the moment you need no settings to edit (inside Kodi). Requires Kodi 17 min. 
 
 ### Directory structure
-
 This addon is developed with the "default" directory layout of Kodi in mind  [see: "1.1 Simple" for tv shows](http://kodi.wiki/view/Naming_video_files/TV_shows) and [see: "Movies stored in individual folders" for movies](http://kodi.wiki/view/Naming_video_files/Movies)
 
 You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia."). Kodi wil NOT scan these iso files. 
@@ -28,27 +27,11 @@ You need to add a directory where the bluray iso files are stored. This director
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <directorydetails>
-  <video filename="s00e02.BIUvideo.mp4">
-    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
-    <playlist>00006</playlist>
-    <starttime></starttime>
-    <stoptime></stoptime>
-    <audiochannel></audiochannel>
-    <subtitlechannel></subtitlechannel>
-  </video>
-  <video filename="s00e04.BIUvideo.mp4">
-    <isofile>.BIUfiles/Firefly.s01e05.s01e06.s01e07.s01e08.s01e09.BluRay.iso</isofile>
-    <playlist>00007</playlist>
-    <starttime></starttime>
-    <stoptime></stoptime>
-    <audiochannel></audiochannel>
-    <subtitlechannel></subtitlechannel>
-  </video>
   <video filename="s01e01.BIUvideo.mp4">
     <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
     <playlist>00001</playlist>
-    <starttime>00:10:00</starttime>
-    <stoptime>00:11:00</stoptime>
+    <starttime></starttime>
+    <stoptime></stoptime>
     <audiochannel></audiochannel>
     <subtitlechannel></subtitlechannel>
   </video>
@@ -60,8 +43,7 @@ You need to add a directory where the bluray iso files are stored. This director
     <audiochannel></audiochannel>
     <subtitlechannel>1</subtitlechannel>
   </video>
-  <video filename="s01e03.BIUvideo.mp4">
-    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+</directorydetails>
 ```
 
 
