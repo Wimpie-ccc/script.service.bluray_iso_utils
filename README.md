@@ -47,7 +47,8 @@ Tv Shows
    |         |       |-----s01e01.BluRay.BIUvideo.mp4
    |         |       |-----s01e02.BIUvideo.mp4
    |         |       |-----s01e03.BluRay.BIUvideo.mp4
-   |         |       |-----s01e07BluRay.BIUvideo.mp4
+   |         |       |-----s01e07.BluRay.BIUvideo.mp4
+   |         |       |-----s01e07.BluRay.BIUvideo.srt
    |         |----Season 2
    |         |       |-----.BIUfiles
 ...
@@ -65,8 +66,8 @@ Inside the video element are child elements. They are:
    - <playlist>  NEEDED. MUST be 5 numbers. The correct playlist on the bluray disc for this video.
    - <starttime>  Optional start time of the video. Can be blank if not needed. Can be used to skip past the "previously on ..." recaps. format: hh:mm:ss, eg : 00:00:47
    - <stoptime>  Optional stop time of the video. Can be blank if not needed. Is usefull for those discs were all tv episodes are linked to 1 big video (use together with <starttime>). format: hh:mm:ss, eg : 01:32:47
-   - <audiochannel> Used when kodi does not recognise the language (Kodi shows "Unknown" as language).
-   - <subtitlechannel> Used when kodi does not recognise the language (Kodi shows "Unknown" as language).
+   - <audiochannel> Used when kodi does not recognise the language (Kodi shows "Unknown" as language). When you look at the languages in Kodi, the top one is nuber 1 second from top is number 2, etcc...
+   - <subtitlechannel> Used when kodi does not recognise the language (Kodi shows "Unknown" as language). When you look at the languages in Kodi, the top one is nuber 1 second from top is number 2, etcc... If you put in here 0, then the addon will use an external .srt file for subtitiles. This external .srt file NEEDS to be named the same as the viedo file, but with extension ".srt".
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
