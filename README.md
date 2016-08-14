@@ -72,7 +72,7 @@ Movies
    |        |         |-----myothermovie.iso
    |        |         |-----.nomedia
    |        |-----BIUinfo.xml
-   |        |-----myothermovie (1995)Bluray.BIUvideo.mp4
+   |        |-----myothermovie (1995).Bluray.BIUvideo.mp4
 ...
 ```
 
