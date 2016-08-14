@@ -27,6 +27,30 @@ This addon is developed with the "default" directory layout of Kodi in mind  [se
 
 You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia."). Kodi wil NOT scan these iso files. 
 
+```
+Tv Shows
+   |-----TV Show 1
+   |         |----Season 1
+   |         |       |-----.BIUfiles
+   |         |       |         |-----MyShow.s01e01.s01e02.s01e03.s01e04.BluRay.iso
+   |         |       |         |-----MyShow_Disc_02.iso
+   |         |       |         |-----.nomedia
+   |         |       |-----Extras
+   |         |       |       |---BIUinfo.xml
+   |         |       |       |---Making of MyShow.BIUvideo.mp4
+   |         |       |       |---Interview withe the cast.BIUvideo.mp4
+   |         |       |-----BIUinfo.xml
+   |         |       |-----s01e01.BluRay.BIUvideo.mp4
+   |         |       |-----s01e02.BIUvideo.mp4
+   |         |       |-----s01e03.BluRay.BIUvideo.mp4
+   |         |       |-----s01e07BluRay.BIUvideo.mp4
+   |         |----Season 2
+   |         |       |-----.BIUfiles
+...
+```
+
+
+
 
 
 
@@ -34,24 +58,24 @@ You need to add a directory where the bluray iso files are stored. This director
 <?xml version="1.0" encoding="utf-8"?>
 <directorydetails>
   <video filename="s01e01.BluRay.BIUvideo.mp4">
-    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+    <isofile>.BIUfiles/MyShow.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
     <playlist>00001</playlist>
     <starttime></starttime>
     <stoptime></stoptime>
     <audiochannel></audiochannel>
     <subtitlechannel></subtitlechannel>
   </video>
-  <video filename="s01e02.BluRay.BIUvideo.mp4">
-    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+  <video filename="s01e02.BIUvideo.mp4">
+    <isofile>.BIUfiles/MyShow.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
     <playlist>00002</playlist>
   </video>
   <video filename="s01e03.BluRay.BIUvideo.mp4">
-    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+    <isofile>.BIUfiles/MyShow.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
     <playlist>00003</playlist>
     <starttime>00:01:00</starttime>
   </video>
   <video filename="s01e07.BluRay.BIUvideo.mp4">
-    <isofile>.BIUfiles/Firefly_Disc_02.iso</isofile>
+    <isofile>.BIUfiles/MyShow_Disc_02.iso</isofile>
     <playlist>00004</playlist>
     <starttime>00:45:42</starttime>
     <stoptime>01:31:02</stoptime>
@@ -61,13 +85,6 @@ You need to add a directory where the bluray iso files are stored. This director
 </directorydetails>
 ```
 
-```
-My Tv Shows
-    |---------Firefly
-    |            |----.BIUFiles
-    |            |        |-------Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso
-    |            |        |-------Firefly_Disc_02.iso
-```
 
 
 
