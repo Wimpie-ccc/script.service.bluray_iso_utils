@@ -99,7 +99,7 @@ Inside the video element are child elements. They are:
 </directorydetails>
 ```
 Example "Extras" BIUinfo.xml file:
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <directorydetails>
   <video filename="Making of MyShow.BIUvideo.mp4">
