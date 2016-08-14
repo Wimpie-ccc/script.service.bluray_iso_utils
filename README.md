@@ -58,7 +58,7 @@ Movie example
 Movies
    |-----mymovie (1985)
    |        |-----.BIUfiles
-   |        |         |-----mymovie.Bluray.iso
+   |        |         |-----mymovie.BluRay.iso
    |        |         |-----.nomedia
    |        |-----Extras
    |        |       |---BIUinfo.xml
@@ -72,7 +72,7 @@ Movies
    |        |         |-----myothermovie.iso
    |        |         |-----.nomedia
    |        |-----BIUinfo.xml
-   |        |-----myothermovie (1995).Bluray.BIUvideo.mp4
+   |        |-----myothermovie (1995).BluRay.BIUvideo.mp4
 ...
 ```
 
