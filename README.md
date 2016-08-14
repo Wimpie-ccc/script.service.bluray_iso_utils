@@ -27,7 +27,7 @@ This addon is developed with the "default" directory layout of Kodi in mind  [se
 
 You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia.") so that Kodi wil NOT scan these iso files (Alternativly: use [advancedsettings.xml (2.3.11 & 2.3.13)](http://kodi.wiki/view/advancedsettings.xml)). The iso files can have any name.
 
-Every episode/movie is a small dummy video (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)). The name of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4", but otherwise has no limitations. I advice to name it such that the scraper has no problem scrapping it. Also filetags like ".bluray." are possible.
+Every episode/movie is a small dummy video (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)). The name of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4", but otherwise has no limitations. I advice to name it such that the scraper has no problem scraping it. Also filetags like ".bluray." are possible.
 
 Each directory containing these dummy videos need a "BIUinfo.xml". This file contains the relevent info to link the '.BIUvideo.mp4' video file to the corresponding playlist in the blu-ray iso. [See example](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml)
 
@@ -54,6 +54,25 @@ Tv Shows
 ```
 
 ### BIUinfo.xml file structure
+This file is used to link the dummy video with the correct playlist on the blu-ray disc.
+
+It is a .xml file. The root element is <directorydetails>, and each video is contained in a <video> element.
+
+The video element has an attribute "filename=myvideofile", where myvideofile the name of the dummy video is. This is required, without it won't work.
+
+Inside the video element are child elements. They are: 
+   - <isofile> : NEEDED. Link to the iso file, can be "../myothermovie/.BIUfiles/Mymovie.BluRay.iso". This means go back 1 directory level into the myothermovie directory, think of this as is you do "cd .." in the CLI. This is used for multiple cuts on 1 blu-ray disc, or for extras.
+   - <playlist> : NEEDED. MUST be 5 numbers. The correct playlist on the bluray disc for this video.
+   - <starttime> : Optional start time of the video. Can be blank if not needed. Can be used to skip past the "previously on ..." recaps. format: hh:mm:ss, eg : 00:00:47
+   - <stoptime> : Optional stop time of the video. Can be blank if not needed. Is usefull for those discs were all tv episodes are linked to 1 big video (use together with <starttime>). eg: | episode | line 4 | line 5 |
+|-----|--------|--------|
+s01e01.strm | 00:00:00 | 00:45:00 |
+s01e02.strm | 00:45:01 | 01:30:00|
+s01e03.strm | 01:30:01 | 02:15:00|
+s01e04.strm | 02:15:01 | 03:00:00 |
+
+   - 
+
 
 
 
