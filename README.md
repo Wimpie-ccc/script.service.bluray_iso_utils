@@ -56,7 +56,7 @@ Tv Shows
 ### BIUinfo.xml file structure
 This file is used to link the dummy video with the correct playlist on the blu-ray disc.
 
-It is a .xml file. The root element is <directorydetails>, and each video is contained in a <video> element.
+It is a .xml file. The root element is "<directorydetails>", and each video is contained in a "<video>" element.
 
 The video element has an attribute "filename=myvideofile", where myvideofile the name of the dummy video is. This is required, without it won't work.
 
