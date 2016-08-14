@@ -27,7 +27,7 @@ This addon is developed with the "default" directory layout of Kodi in mind  [se
 
 You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia.") so that Kodi wil NOT scan these iso files (Alternatively: use [advancedsettings.xml (2.3.11 & 2.3.13)](http://kodi.wiki/view/advancedsettings.xml)). The iso files can have any name.
 
-Every episode/movie is a small dummy video (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)). The name of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4", but otherwise has no limitations. I advice to name it such that the scraper has no problem scraping it. Also filetags like ".bluray." are possible.
+Every episode/movie is a small dummy video (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)). The filename of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4", but otherwise has no limitations. I advice to name it such that the scraper has no problem scraping it. Also filetags like ".bluray." are possible.
 
 Each directory containing these dummy videos need a "BIUinfo.xml" file. This file contains the relevent info to link the '.BIUvideo.mp4' video file to the corresponding playlist in the blu-ray iso. [See example](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml)
 
@@ -88,8 +88,8 @@ Inside the video element are child elements. Optional elements can be left out. 
    - <playlist>  NEEDED, MUST be 5 numbers. The correct playlist on the bluray disc for this video.
    - <starttime>  Optional, start time of the video. Can be blank if not needed. Can be used to skip past the "previously on ..." recaps. format: hh:mm:ss, eg : 00:00:47
    - <stoptime>  Optional, stop time of the video. Can be blank if not needed. Is usefull for those discs were all tv episodes are linked to 1 big video (use together with <starttime>). format: hh:mm:ss, eg : 01:32:47
-   - <audiochannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1 second from top is number 2, etc...
-   - <subtitlechannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1 second from top is number 2, etc... If you put in here 0, then the addon will use an external .srt file for subtitiles. This external .srt file NEEDS to be named the same as the video file, but with extension ".srt".
+   - <audiochannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1, second from top is number 2, etc...
+   - <subtitlechannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1, second from top is number 2, etc... If you put in here 0, then the addon will use an external .srt file for subtitiles. This external .srt file NEEDS to be named the same as the video file, but with extension ".srt".
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
