@@ -53,6 +53,28 @@ Tv Shows
    |         |       |-----.BIUfiles
 ...
 ```
+Movie example
+```
+Movies
+   |-----mymovie (1985)
+   |        |-----.BIUfiles
+   |        |         |-----mymovie.Bluray.iso
+   |        |         |-----.nomedia
+   |        |-----Extras
+   |        |       |---BIUinfo.xml
+   |        |       |---Making of mymovie.BIUvideo.mp4
+   |        |       |---Delete scenes.BIUvideo.mp4
+   |        |-----BIUinfo.xml
+   |        |-----mymovie (1985).BluRay.BIUvideo.mp4
+   |        |-----mymovie (1985).BluRay.BIUvideo.srt
+   |-----myothermovie (1995)
+   |        |-----.BIUfiles
+   |        |         |-----myothermovie.iso
+   |        |         |-----.nomedia
+   |        |-----BIUinfo.xml
+   |        |-----myothermovie (1995)Bluray.BIUvideo.mp4
+...
+```
 
 ### BIUinfo.xml file structure
 This file is used to link the dummy video with the correct playlist on the blu-ray disc.
@@ -62,7 +84,7 @@ It is a .xml file. The root element is "directorydetails", and each video is con
 The video element has an attribute "filename=myvideofile", where myvideofile is the name of the dummy video. This is required, without it won't work.
 
 Inside the video element are child elements. Optional elements can be left out. They are: 
-   - <isofile>  NEEDED. Link to the iso file, relative from the directory that contains this .xml file. Can be "../myothermovie/.BIUfiles/myothermovie.iso". This means go back 1 directory level into the myothermovie directory, think of this as is you do "cd .." in the CLI. This is used for multiple cuts on 1 blu-ray disc, or for extras.
+   - <isofile>  NEEDED. Link to the iso file, relative from the directory that contains this .xml file. Can be "../myothermovie (1995)/.BIUfiles/myothermovie.iso". This means go back 1 directory level into the myothermovie directory, think of this as is you do "cd .." in the CLI. This is used for multiple cuts on 1 blu-ray disc, or for extras.
    - <playlist>  NEEDED. MUST be 5 numbers. The correct playlist on the bluray disc for this video.
    - <starttime>  Optional start time of the video. Can be blank if not needed. Can be used to skip past the "previously on ..." recaps. format: hh:mm:ss, eg : 00:00:47
    - <stoptime>  Optional stop time of the video. Can be blank if not needed. Is usefull for those discs were all tv episodes are linked to 1 big video (use together with <starttime>). format: hh:mm:ss, eg : 01:32:47
