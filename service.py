@@ -339,7 +339,7 @@ class BIUplayer(xbmc.Player):
                 return
 
             # Init backpathiso_UTF8 so we can check if we got a match
-            backpathiso_UTF8 == None
+            backpathiso_UTF8 = None
             # Extract all settings from the BIUfile.xml file.
             for video_XML in directorydetails_XML:                              # for every video node
                 log('Videofile = %s' % (video_XML.attrib['filename']))
