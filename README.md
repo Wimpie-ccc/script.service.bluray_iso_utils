@@ -135,5 +135,5 @@ Example "Extras" BIUinfo.xml file:
   </video>
 </directorydetails>
 ```
-# Questions / Contact
+## Questions / Contact
 Please use the [Kodi forum](http://forum.kodi.tv/showthread.php?tid=280247).
