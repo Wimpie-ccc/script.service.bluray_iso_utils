@@ -57,11 +57,11 @@ Tv Shows
 ### BIUinfo.xml file structure
 This file is used to link the dummy video with the correct playlist on the blu-ray disc.
 
-It is a .xml file. The root element is "directorydetails", and each video is contained in a "video" element. Optional elements can be left out.
+It is a .xml file. The root element is "directorydetails", and each video is contained in a "video" element. 
 
 The video element has an attribute "filename=myvideofile", where myvideofile is the name of the dummy video. This is required, without it won't work.
 
-Inside the video element are child elements. They are: 
+Inside the video element are child elements. Optional elements can be left out. They are: 
    - <isofile>  NEEDED. Link to the iso file, relative from the directory that contains this .xml file. Can be "../myothermovie/.BIUfiles/Mymovie.BluRay.iso". This means go back 1 directory level into the myothermovie directory, think of this as is you do "cd .." in the CLI. This is used for multiple cuts on 1 blu-ray disc, or for extras.
    - <playlist>  NEEDED. MUST be 5 numbers. The correct playlist on the bluray disc for this video.
    - <starttime>  Optional start time of the video. Can be blank if not needed. Can be used to skip past the "previously on ..." recaps. format: hh:mm:ss, eg : 00:00:47
