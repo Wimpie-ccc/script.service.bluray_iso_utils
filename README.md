@@ -66,8 +66,8 @@ Inside the video element are child elements. Optional elements can be left out. 
    - <playlist>  NEEDED. MUST be 5 numbers. The correct playlist on the bluray disc for this video.
    - <starttime>  Optional start time of the video. Can be blank if not needed. Can be used to skip past the "previously on ..." recaps. format: hh:mm:ss, eg : 00:00:47
    - <stoptime>  Optional stop time of the video. Can be blank if not needed. Is usefull for those discs were all tv episodes are linked to 1 big video (use together with <starttime>). format: hh:mm:ss, eg : 01:32:47
-   - <audiochannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). When you look at the languages in Kodi, the top one is nuber 1 second from top is number 2, etcc...
-   - <subtitlechannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). When you look at the languages in Kodi, the top one is nuber 1 second from top is number 2, etcc... If you put in here 0, then the addon will use an external .srt file for subtitiles. This external .srt file NEEDS to be named the same as the viedo file, but with extension ".srt".
+   - <audiochannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1 second from top is number 2, etc...
+   - <subtitlechannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1 second from top is number 2, etc... If you put in here 0, then the addon will use an external .srt file for subtitiles. This external .srt file NEEDS to be named the same as the video file, but with extension ".srt".
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
