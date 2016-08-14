@@ -98,4 +98,17 @@ Inside the video element are child elements. They are:
   </video>
 </directorydetails>
 ```
-
+Example "Extras" BIUinfo.xml file:
+```
+<?xml version="1.0" encoding="utf-8"?>
+<directorydetails>
+  <video filename="Making of MyShow.BIUvideo.mp4">
+    <isofile>../Extras/.BIUfiles/MyShow.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+    <playlist>00053</playlist>
+  </video>
+  <video filename="Interview withe the cast.BIUvideo.mp4">
+    <isofile>../Extras/.BIUfiles/MyShow_S01D02.iso</isofile>
+    <playlist>00011</playlist>
+  </video>
+</directorydetails>
+```
