@@ -31,6 +31,7 @@ Every episode/movie is a small dummy video (get one [here](https://github.com/Wi
 
 Each directory containing these dummy videos need a "BIUinfo.xml" file. This file contains the relevent info to link the '.BIUvideo.mp4' video file to the corresponding playlist in the blu-ray iso. [See example](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml)
 
+TV show example
 ```
 Tv Shows
    |-----TV Show 1
@@ -91,6 +92,7 @@ Inside the video element are child elements. Optional elements can be left out. 
    - <audiochannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1, second from top is number 2, etc...
    - <subtitlechannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1, second from top is number 2, etc... If you put in here 0, then the addon will use an external .srt file for subtitiles. This external .srt file NEEDS to be named the same as the video file, but with extension ".srt".
 
+TV show example
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <directorydetails>
