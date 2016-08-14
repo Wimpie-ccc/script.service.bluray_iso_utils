@@ -25,7 +25,7 @@ A dummy, 12 seconds long, animation can be downloaded [here](https://github.com/
 ### Directory structure
 This addon is developed with the "default" directory layout of Kodi in mind  [see: "1.1 Simple" for tv shows](http://kodi.wiki/view/Naming_video_files/TV_shows) and [see: "Movies stored in individual folders" for movies](http://kodi.wiki/view/Naming_video_files/Movies)
 
-You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia."). Kodi wil NOT scan these iso files. 
+You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia.") so that Kodi wil NOT scan these iso files (Alternativly: use [advancedsettings.xml (2.3.11 & 2.3.13)](kodi.wiki/view/advancedsettings.xml)). 
 
 ```
 Tv Shows
@@ -33,7 +33,7 @@ Tv Shows
    |         |----Season 1
    |         |       |-----.BIUfiles
    |         |       |         |-----MyShow.s01e01.s01e02.s01e03.s01e04.BluRay.iso
-   |         |       |         |-----MyShow_Disc_02.iso
+   |         |       |         |-----MyShow_S01D02.iso
    |         |       |         |-----.nomedia
    |         |       |-----Extras
    |         |       |       |---BIUinfo.xml
@@ -75,7 +75,7 @@ Tv Shows
     <starttime>00:01:00</starttime>
   </video>
   <video filename="s01e07.BluRay.BIUvideo.mp4">
-    <isofile>.BIUfiles/MyShow_Disc_02.iso</isofile>
+    <isofile>.BIUfiles/MyShow_S01D02.iso</isofile>
     <playlist>00004</playlist>
     <starttime>00:45:42</starttime>
     <stoptime>01:31:02</stoptime>
