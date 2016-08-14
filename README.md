@@ -29,7 +29,7 @@ You need to add a directory where the bluray iso files are stored. This director
 
 Every episode/movie is a small dummy video (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)). The name of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4", but otherwise has no limitations. I advice to name it such that the scraper has no problem scraping it. Also filetags like ".bluray." are possible.
 
-Each directory containing these dummy videos need a "BIUinfo.xml". This file contains the relevent info to link the '.BIUvideo.mp4' video file to the corresponding playlist in the blu-ray iso. [See example](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml)
+Each directory containing these dummy videos need a "BIUinfo.xml" file. This file contains the relevent info to link the '.BIUvideo.mp4' video file to the corresponding playlist in the blu-ray iso. [See example](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml)
 
 ```
 Tv Shows
@@ -84,10 +84,10 @@ It is a .xml file. The root element is "directorydetails", and each video is con
 The video element has an attribute "filename=myvideofile", where myvideofile is the name of the dummy video. This is required, without it won't work.
 
 Inside the video element are child elements. Optional elements can be left out. They are: 
-   - <isofile>  NEEDED. Link to the iso file, relative from the directory that contains this .xml file. Can be "../myothermovie (1995)/.BIUfiles/myothermovie.iso". This means go back 1 directory level into the myothermovie directory, think of this as is you do "cd .." in the CLI. This is used for multiple cuts on 1 blu-ray disc, or for extras.
-   - <playlist>  NEEDED. MUST be 5 numbers. The correct playlist on the bluray disc for this video.
-   - <starttime>  Optional start time of the video. Can be blank if not needed. Can be used to skip past the "previously on ..." recaps. format: hh:mm:ss, eg : 00:00:47
-   - <stoptime>  Optional stop time of the video. Can be blank if not needed. Is usefull for those discs were all tv episodes are linked to 1 big video (use together with <starttime>). format: hh:mm:ss, eg : 01:32:47
+   - <isofile>  NEEDED, link to the iso file, relative from the directory that contains this .xml file. Can be "../myothermovie (1995)/.BIUfiles/myothermovie.iso". This means go back 1 directory level into the myothermovie directory, think of this as if you do "cd .." in the CLI. It is used for multiple cuts on 1 blu-ray disc, or for extras.
+   - <playlist>  NEEDED, MUST be 5 numbers. The correct playlist on the bluray disc for this video.
+   - <starttime>  Optional, start time of the video. Can be blank if not needed. Can be used to skip past the "previously on ..." recaps. format: hh:mm:ss, eg : 00:00:47
+   - <stoptime>  Optional, stop time of the video. Can be blank if not needed. Is usefull for those discs were all tv episodes are linked to 1 big video (use together with <starttime>). format: hh:mm:ss, eg : 01:32:47
    - <audiochannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1 second from top is number 2, etc...
    - <subtitlechannel> Optional, used when kodi does not recognise the language (Kodi shows "Unknown" as language). Can be blank if not needed. When you look at the languages in Kodi, the top one is number 1 second from top is number 2, etc... If you put in here 0, then the addon will use an external .srt file for subtitiles. This external .srt file NEEDS to be named the same as the video file, but with extension ".srt".
 
