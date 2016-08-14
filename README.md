@@ -6,7 +6,7 @@ This addon will enable the Kodi user to access all videos on a bluray iso file.
 
 With this addon you are able to:
 - import tv shows and movies on bluray iso's in the Kodi library (as if they are .mkv files)
-- are able to use video extras with all the extras on the bluray iso
+- use the video extras addon with all the extras on the bluray iso
 - can set default audio and subtitle streams (usefull when kodi shows 'Unknown' as language)
 - enter a multiple movie iso file correctly in the Kodi library, each movie will have it's own entrypoint
 - enter different cut's of a movie correctly in the Kodi library (from 1 bluray iso file), each movie will have it's own entrypoint
@@ -25,7 +25,11 @@ A dummy, 12 seconds long, animation can be downloaded [here](https://github.com/
 ### Directory structure
 This addon is developed with the "default" directory layout of Kodi in mind  [see: "1.1 Simple" for tv shows](http://kodi.wiki/view/Naming_video_files/TV_shows) and [see: "Movies stored in individual folders" for movies](http://kodi.wiki/view/Naming_video_files/Movies)
 
-You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia.") so that Kodi wil NOT scan these iso files (Alternativly: use [advancedsettings.xml (2.3.11 & 2.3.13)](http://kodi.wiki/view/advancedsettings.xml)). 
+You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia.") so that Kodi wil NOT scan these iso files (Alternativly: use [advancedsettings.xml (2.3.11 & 2.3.13)](http://kodi.wiki/view/advancedsettings.xml)). The iso files can have any name.
+
+Every episode/movie is a small black dummy video (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)). The name of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4", but otherwise has no limitations. I advice to name it such that the scraper has no problem scrapping it. Also filetags like .bluray. are possible.
+
+
 
 ```
 Tv Shows
