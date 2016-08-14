@@ -56,15 +56,15 @@ Tv Shows
 ### BIUinfo.xml file structure
 This file is used to link the dummy video with the correct playlist on the blu-ray disc.
 
-It is a .xml file. The root element is "<directorydetails>", and each video is contained in a "<video>" element.
+It is a .xml file. The root element is "directorydetails", and each video is contained in a "video" element.
 
-The video element has an attribute "filename=myvideofile", where myvideofile the name of the dummy video is. This is required, without it won't work.
+The video element has an attribute "filename=myvideofile", where myvideofile is the name of the dummy video. This is required, without it won't work.
 
 Inside the video element are child elements. They are: 
-   - <isofile>  NEEDED. Link to the iso file, can be "../myothermovie/.BIUfiles/Mymovie.BluRay.iso". This means go back 1 directory level into the myothermovie directory, think of this as is you do "cd .." in the CLI. This is used for multiple cuts on 1 blu-ray disc, or for extras.
+   - <isofile>  NEEDED. Link to the iso file, relative from the directory that contains this .xml file. Can be "../myothermovie/.BIUfiles/Mymovie.BluRay.iso". This means go back 1 directory level into the myothermovie directory, think of this as is you do "cd .." in the CLI. This is used for multiple cuts on 1 blu-ray disc, or for extras.
    - <playlist>  NEEDED. MUST be 5 numbers. The correct playlist on the bluray disc for this video.
    - <starttime>  Optional start time of the video. Can be blank if not needed. Can be used to skip past the "previously on ..." recaps. format: hh:mm:ss, eg : 00:00:47
-   - <stoptime>  Optional stop time of the video. Can be blank if not needed. Is usefull for those discs were all tv episodes are linked to 1 big video (use together with <starttime>). 
+   - <stoptime>  Optional stop time of the video. Can be blank if not needed. Is usefull for those discs were all tv episodes are linked to 1 big video (use together with <starttime>). format: hh:mm:ss, eg : 01:32:47
    - <audiochannel> Used when kodi does not recognise the language (Kodi shows "Unknown" as language).
    - <subtitlechannel> Used when kodi does not recognise the language (Kodi shows "Unknown" as language).
 
@@ -98,78 +98,4 @@ Inside the video element are child elements. They are:
   </video>
 </directorydetails>
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-![alt text](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/TV-file-structure.png)
-
-The [.strm files](https://github.com/Wimpie-ccc/helperfiles/blob/master/s01e01.strm) have following structure:
-
-![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/example.strm-file.png)
-
-Line 1:
-
-Do not touch, contains location of a helper video, needed for correct function of this addon.
-
-Line 2:
-
-Contains the location of the bluray iso file, relative from the directory that contains this .strm file. eg: Lets say C:\Users\wimpie-ccc\Videos\MyMovies\ is the root were all my movies are.
-
-![alt text](https://github.com/Wimpie-ccc/helperfiles/blob/master/movie-file-structure.png)
-
-Then line 2 in movie_1_theatrical.strm would be: "# .BIUfiles/movie1.iso"
-
-Line 2 in movie_1_uncut.strm would be: "# ../Movie_1-Theatricalversion/.BIUfiles/movie1.iso" (Think this as if using "cd .." in the shell)
-
-Line 2 in movie2.strm would be "# .BIUfiles/movie2.iso"
-
-Line 3:
-
-This is the number of the playlist on the bluray iso.
-
-Could be for movie_1_theatrical.strm "# 00001". NEEDS to be 5 digits!
-
-Could be for movie_1_uncut.strm "# 00002"
-
-Could be for movie2.strm "# 00800"
-
-Line 4:
-
-Optional time from were we start playing, format uu:mm:ss. Can be blank if not needed. eg: "# 00:45:23". Is usefull for jumping past the "previously on ..." recaps.
-
-Line 5:
-
-Optional time when we stop playing this playlist, format uu:mm:ssm. Can be blank if not needed. eg: "# 01:30:55". Is usefull for those discs were all tv episodes are linked to 1 big video (use together with line 4). eg:
-
-| episode | line 4 | line 5 |
-|-----|--------|--------|
-s01e01.strm | 00:00:00 | 00:45:00 |
-s01e02.strm | 00:45:01 | 01:30:00|
-s01e03.strm | 01:30:01 | 02:15:00|
-s01e04.strm | 02:15:01 | 03:00:00 |
-
-Line 6:
-
-Optional Audio channel, starts from 1. Can be blank if not needed. eg: "# 2"
-
-Line 7:
-
-Optional Subtitle, internal starts from 1, 0 means use external subtitles. Can be blank if not needed. eg: "# 2"
 
