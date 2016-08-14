@@ -61,6 +61,31 @@ You need to add a directory where the bluray iso files are stored. This director
 </directorydetails>
 ```
 
+```
+My Tv Shows
+    |---------Firefly
+    |            |----.BIUFiles
+    |            |        |-------Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso
+    |            |        |-------Firefly_Disc_02.iso
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ![alt text](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/TV-file-structure.png)
 
