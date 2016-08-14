@@ -82,7 +82,7 @@ This file is used to link the dummy video with the correct playlist on the blu-r
 
 It is a .xml file. The root element is "directorydetails", and each video is contained in a "video" element. 
 
-The video element has an attribute "filename=myvideofile", where myvideofile is the name of the dummy video. This is required, without it won't work.
+The video element has an attribute "filename=myvideofile", where myvideofile is the name of the dummy video. This is required, it won't work without it.
 
 Inside the video element are child elements. Optional elements can be left out. They are: 
    - <isofile>  NEEDED, link to the iso file, relative from the directory that contains this .xml file. Can be "../myothermovie (1995)/.BIUfiles/myothermovie.iso". This means go back 1 directory level into the myothermovie directory, think of this as if you do "cd .." in the CLI. It is used for multiple cuts on 1 blu-ray disc, or for extras.
