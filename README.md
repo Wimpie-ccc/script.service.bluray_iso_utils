@@ -8,6 +8,7 @@ With this addon you are able to:
 - import tv shows and movies on bluray iso's in the Kodi library (as if they are .mkv files)
 - use the video extras addon with all the extras on the bluray iso
 - can set default audio and subtitle streams (usefull when kodi shows 'Unknown' as language)
+- use external (.srt) subtitles for your videos
 - enter a multiple movie iso file correctly in the Kodi library, each movie will have it's own entrypoint
 - enter different cut's of a movie correctly in the Kodi library (from 1 bluray iso file), each movie will have it's own entrypoint
 - skip the recap ("Previously on ...") on your tv shows
