@@ -138,7 +138,7 @@ Example "Extras" BIUinfo.xml file:
     <isofile>../Extras/.BIUfiles/MyShow.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
     <playlist>00053</playlist>
   </video>
-  <video filename="Interview with the cast.BIUvideo.mp4
+  <video filename="Interview with the cast.BIUvideo.mp4">
     <isofile>../Extras/.BIUfiles/MyShow_S01D02.iso</isofile>
     <playlist>00011</playlist>
   </video>
