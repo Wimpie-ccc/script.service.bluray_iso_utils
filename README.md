@@ -14,7 +14,7 @@ With this addon you are able to:
 - skip the recap ("Previously on ...") on your tv shows
 - should work with a mix of Kodi devices (win 7, Openelec, ...)
 
-This is done through the use of .xml and dummy video files. No symlinks need to be made. 
+This is done through the use of .xml and dummy video files (.mp4 files or .strm files). No symlinks need to be made. 
 
 ## Installing
 Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file (rename the zipfile to: "script.service.bluray_iso_utils.zip" AND rename root dir in zip file to "script.service.bluray_iso_utils" before installing.). At the moment you need no settings to edit (inside Kodi). Requires Kodi 17 min. 
@@ -28,9 +28,9 @@ This addon is developed with the "default" directory layout of Kodi in mind  [se
 
 You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia.") so that Kodi wil NOT scan these iso files (Alternatively: use [advancedsettings.xml (2.3.11 & 2.3.13)](http://kodi.wiki/view/advancedsettings.xml)). The iso files can have any name.
 
-Every episode/movie is a small dummy video (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)). The filename of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4", but otherwise has no limitations. I advice to name it such that the scraper has no problem scraping it. Also filetags like ".bluray." are possible.
+Every episode/movie is a small dummy video. It can be a small .mp4 file (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)) or a .strm file (get one of those [here](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/s01e01.strm)). The filename of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4" (if using an .mp4), but otherwise has no limitations (for a .strm file, it can be anything usefull (moviename, season/episode number)). I advice to name it such that the scraper has no problem scraping it. Also filetags like ".bluray." are possible.
 
-Each directory containing these dummy videos need a "BIUinfo.xml" file. This file contains the relevent info to link the '.BIUvideo.mp4' video file to the corresponding playlist in the blu-ray iso. [See example](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml)
+Each directory containing these dummy videos need a "BIUinfo.xml" file. This file contains the relevent info to link the dummy video file to the corresponding playlist in the blu-ray iso. [See example](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml)
 
 TV show example
 ```
@@ -49,6 +49,8 @@ Tv Shows
    |         |       |-----s01e01.BluRay.BIUvideo.mp4
    |         |       |-----s01e02.BIUvideo.mp4
    |         |       |-----s01e03.BluRay.BIUvideo.mp4
+   |         |       |-----s01e04.strm
+   |         |       |-----s01e04.srt
    |         |       |-----s01e07.BluRay.BIUvideo.mp4
    |         |       |-----s01e07.BluRay.BIUvideo.srt
    |         |----Season 2
@@ -64,8 +66,8 @@ Movies
    |        |         |-----.nomedia
    |        |-----Extras
    |        |       |---BIUinfo.xml
-   |        |       |---Making of mymovie.BIUvideo.mp4
-   |        |       |---Delete scenes.BIUvideo.mp4
+   |        |       |---Making of mymovie.strm
+   |        |       |---Delete scenes.strm
    |        |-----BIUinfo.xml
    |        |-----mymovie (1985).BluRay.BIUvideo.mp4
    |        |-----mymovie (1985).BluRay.BIUvideo.srt
@@ -114,6 +116,10 @@ TV show example
     <playlist>00003</playlist>
     <starttime>00:01:00</starttime>
   </video>
+  <video filename="s01e04.strm">
+    <isofile>.BIUfiles/Firefly.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
+    <playlist>00009</playlist>
+  </video>
   <video filename="s01e07.BluRay.BIUvideo.mp4">
     <isofile>.BIUfiles/MyShow_S01D02.iso</isofile>
     <playlist>00004</playlist>
@@ -132,11 +138,20 @@ Example "Extras" BIUinfo.xml file:
     <isofile>../Extras/.BIUfiles/MyShow.s01e01.s01e02.s01e03.s01e04.BluRay.iso</isofile>
     <playlist>00053</playlist>
   </video>
-  <video filename="Interview with the cast.BIUvideo.mp4">
+  <video filename="Interview with the cast.BIUvideo.mp4
     <isofile>../Extras/.BIUfiles/MyShow_S01D02.iso</isofile>
     <playlist>00011</playlist>
   </video>
 </directorydetails>
 ```
+## Known Issues
+###. strm files
+Stream info is saved correctly, and remembered, but videos can only be vieed is windows with a list (NOT on the homepage of Kodi; last viewed, new movies, ...)
+###.mp4 files
+Can be viewed from any location in Kodi, but stream info is constantly overwritten by Kodi, thus not correct (runtime is 0 min instead of eg 92 min for a movie).
+
+Resume support is not working (can probably get this working with a own database with resume times).
+Chapter support is not available (no JSON support for this, need to input this directly in the Kodi database (= not endorsed by the Kodi team)).
+
 ## Questions / Contact
 Please use the [Kodi forum](http://forum.kodi.tv/showthread.php?tid=280247).

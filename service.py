@@ -82,7 +82,7 @@ class BIUplayer(xbmc.Player):
         result_int = (3600 * hours) + (60 * mins) + secs
         return result_int
 
-    # This is the exit handler, if somthing goes wrong.
+    # This is the exit handler, if something goes wrong.
     # Make function so I forget nothing...
     def BIU_ExitHandler(self, ExitString):
         log(ExitString)
@@ -94,6 +94,7 @@ class BIUplayer(xbmc.Player):
         global Global_BIU_vars
         
         log('Checking if watched flag needs to be set.')
+		
         # Calculate how far we are in the video when we stopped
         try:
             Percent_played = (100 * (Global_BIU_vars["Current_video_time"] - Global_BIU_vars["Start_time"])) / Global_BIU_vars["Duration"]
@@ -158,38 +159,66 @@ class BIUplayer(xbmc.Player):
         global Global_BIU_vars
         global Global_video_dict
 		
+	BIU_videofile_unicode = ""	    # Init
         # See what file we are now playing. 
         Nowplaying = self.getPlayingFile()
-        if settings.service_enabled == 'true':
-            log('Playing File : %s'% Nowplaying)
-
-        # If it is our special video, then we need to redirect xbmc.player to the correct bluray playlist.
-        if (settings.service_enabled and (".BIUvideo.mp4" in Nowplaying)):
-        #if True:
-            # We are playing a .BIUvideo file!!
-            # This is the first pass of our service script
-            log('First pass of the service script')
-            Global_BIU_vars["Current_video_time"] = 0	    # Init
-            Global_BIU_vars["Video_ID"] = -1	            # Init
-            Global_BIU_vars["PlayCount"] = 0	            # Init
-            Global_video_dict = {}                          # Init
-
-            '''JSON_req = {"jsonrpc": "2.0", "method": "JSONRPC.Introspect", "params": { "filter": { "id": "VideoLibrary.SetEpisodeDetails", "type": "method" } }, "id": 1 }
-            JSON_result = utils.executeJSON(JSON_req)
-            log('JSON syntax query = %s' % JSON_result)'''
-    
+	# This part of code checks if we are starting a BR with the help of a .strm file.
+	if (Nowplaying == "special://home/addons/script.service.bluray_iso_utils/resources/media/BIU_Black_Animation.720p.mp4"):
+            # Sometimes getInfoLabel returns "" for ListItem.Path or ListItem.FileName.
+            # I don't know why (Helper thread is blocked??). Try again until succes.
+            # ListItem always returns blank from a homescreen/recently added episode/movie (no list)
+            BIU_FolderPath_unicode = ""     # Init
+            BIU_FileName_unicode = ""       # Init
+            mycounter = 0                   # Needed to prevent deadlock when user wants to play video
+                                            # from wrong location (result of getinfolabel is always empty).                                            
+            while ((BIU_FolderPath_unicode == "" or BIU_FileName_unicode == "") and (mycounter < 10)):
+                # Get Name and Path of this .strm file.
+                # We can not use player.path because this returns the file INSIDE the .strm file.
+                # This is a hack, but there is no other way..
+                # Would love a player.StrmPath and a player.StrmFileName infolabel!!!
+                BIU_FolderPath_unicode = xbmc.getInfoLabel('ListItem.Path').decode("utf-8")
+                log('ListItem.Path = %s ' % BIU_FolderPath_unicode)
+                BIU_FileName_unicode = xbmc.getInfoLabel('ListItem.FileName').decode("utf-8")
+                log('ListItem.FileName (.strm) = %s ' % BIU_FileName_unicode)
+                xbmc.sleep(25)
+                mycounter = mycounter + 1
+            # 10 times should be enough, if not break
+            if (BIU_FolderPath_unicode == "" or BIU_FileName_unicode == ""):
+                log('Error receiving getInfoLabel info!!')
+                # Stop playing our black video
+                self.stop()
+                return
+            # First validatepath to get the slashes OK,
+            # then translatepath to get all the paths working.
+            BIU_videofile_unicode = xbmc.validatePath(BIU_FolderPath_unicode + BIU_FileName_unicode).decode("utf-8")
+            BIU_videofile_unicode = xbmc.translatePath(BIU_videofile_unicode).decode("utf-8")
+            log('BIU_videofile_unicode = %s ' % BIU_videofile_unicode)
+	# This part of code checks if we are starting a BR with the help of a our dummy video file.
+	if (".BIUvideo.mp4" in Nowplaying):
             # Split into filename and directory (later needed).
             # ntpath should be OS agnostic (stackoverflow).
             BIU_FolderPath_unicode = ntpath.dirname(Nowplaying) + '\\'
             log('BIU_FolderPath_unicode = %s ' % BIU_FolderPath_unicode)
             BIU_FileName_unicode = ntpath.basename(Nowplaying)
             log('BIU_FileName_unicode = %s ' % BIU_FileName_unicode)
-
-            # Use validatepath + translatepath for getting valid filename
+            # First validatepath to get the slashes OK,
+            # then translatepath to get all the paths working.
             BIU_videofile_unicode = xbmc.validatePath(BIU_FolderPath_unicode + BIU_FileName_unicode).decode("utf-8")
             BIU_videofile_unicode = xbmc.translatePath(BIU_videofile_unicode).decode("utf-8")
-            log('BIU_videofile_unicode = %s ' % BIU_videofile_unicode)
-
+            log('BIU_videofile_unicode (.mp4) = %s ' % BIU_videofile_unicode)
+            
+		    
+        # If it is our special video, then we need to redirect xbmc.player to the correct bluray playlist.
+        if (settings.service_enabled and (BIU_videofile_unicode != "")):
+            # We are playing a .BIUvideo file!!
+            log('Playing BIUvideo File : %s'% BIU_videofile_unicode)
+            # This is the first pass of our service script
+            log('First pass of the service script')
+            Global_BIU_vars["Current_video_time"] = 0	    # Init
+            Global_BIU_vars["Video_ID"] = -1	            # Init
+            Global_BIU_vars["PlayCount"] = 0	            # Init
+            Global_video_dict = {}                          # Init
+		
             # Use Files.GetFileDetails to see if it is a movie or a tv episode video
             # Also gives us the DBID.
             try:
@@ -322,7 +351,7 @@ class BIUplayer(xbmc.Player):
 
             # Was this video played already?
             log('Playcount = %s' % Global_BIU_vars["PlayCount"])
-
+		
             # First validatepath to get the slashes OK,
             # then translatepath to get all the paths working.
             BIU_file_unicode = xbmc.validatePath(BIU_FolderPath_unicode + 'BIUinfo.xml').decode("utf-8")
@@ -488,7 +517,7 @@ class BIUplayer(xbmc.Player):
             mylistitems.setArt({'poster': Global_video_dict["BIU_Art_Poster_unicode"]})
             # If Global_start_time <> 0 then start the video with the correct starttime (StartOffset).
             if Global_BIU_vars["Start_time"] != 0:
-                mylistitems.setProperty('StartOffset', str(Global_BIU_vars["Start_time"]))  # Is alternative to seek
+                mylistitems.setProperty('StartOffset', str(Global_BIU_vars["Start_time"]))  # Is better alternative to 'start and then seek'
 
             # Convert "cast" [{thumbnail, role, name, order}, {thumbnail, role, name, order}] to
             # [(name, role), (name, role)].
@@ -735,3 +764,9 @@ if (__name__ == "__main__"):
     main = Main()
     # Always logged, user should know addon is installed while debugging turned off.
     xbmc.log('%s: version %s stopped' % (ADDONNAME, ADDONVERSION), level=xbmc.LOGDEBUG)
+		
+		
+		
+		
+		
+		
