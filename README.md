@@ -146,11 +146,11 @@ Example "Extras" BIUinfo.xml file:
 ```
 ## Known Issues
 ###. strm files
-Stream info is saved correctly, and remembered, but videos can only be vieed is windows with a list (NOT on the homepage of Kodi; last viewed, new movies, ...)
+Stream info is saved correctly, and remembered, but videos can only be viewed in windows with a list (NOT on the homepage of Kodi; last viewed, new movies, ...)
 ###.mp4 files
 Can be viewed from any location in Kodi, but stream info is constantly overwritten by Kodi, thus not correct (runtime is 0 min instead of eg 92 min for a movie).
 
-Resume support is not working (can probably get this working with a own database with resume times).
+Resume support is not working (can probably get this working with an own database with resume times).
 Chapter support is not available (no JSON support for this, need to input this directly in the Kodi database (= not endorsed by the Kodi team)).
 
 ## Questions / Contact
