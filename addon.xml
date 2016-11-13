@@ -5,6 +5,7 @@
       provider-name="Wimpie">
     <requires>
         <import addon="xbmc.python" version="2.24.0"/>
+        <import addon="script.module.web-pdb" version="1.0"/>
     </requires>
     <extension point="xbmc.service" library="service.py" start="login"/>
     <extension point="xbmc.addon.metadata">
