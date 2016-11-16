@@ -178,6 +178,10 @@ class BIUplayer(xbmc.Player):
         global Global_BIU_vars
         global Global_video_dict
 
+        '''JSON_req = {"jsonrpc": "2.0", "method": "JSONRPC.Introspect", "params": { "filter": { "id": "VideoLibrary.SetMovieDetails", "type": "method" } }, "id": 1 }
+        JSON_result = utils.executeJSON(JSON_req)
+        log('JSON syntax query = %s' % JSON_result)'''              
+
 	BIU_videofile_unicode = ""	    # Init
         # See what file we are now playing. 
         Nowplaying = self.getPlayingFile()
