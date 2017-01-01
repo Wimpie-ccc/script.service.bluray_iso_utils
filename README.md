@@ -17,7 +17,23 @@ With this addon you are able to:
 This is done through the use of .xml and dummy video files (.mp4 files or .strm files). No symlinks need to be made. 
 
 ## Installing
-Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file (rename the zipfile to: "script.service.bluray_iso_utils.zip" AND rename root dir in zip file to "script.service.bluray_iso_utils" before installing.). At the moment you need no settings to edit (inside Kodi). Requires Kodi 17 min. 
+Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file. Github then creates a .zip file with a not correct filename and directory.
+
+So:
+
+download script.service.bluray_iso_utils-master.zip
+
+extract script.service.bluray_iso_utils-master.zip
+
+rename "script.service.bluray_iso_utils-master" to "script.service.bluray_iso_utils"
+
+make new .zip file from this directory and make sure it is named "script.service.bluray_iso_utils.zip"
+
+install this .zip file in Kodi
+
+Or get it [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/script.service.bluray_iso_utils.zip?raw=true)
+
+At the moment you need no settings to edit (inside Kodi). Requires Kodi 17 min. 
 
 A dummy, 12 seconds long, animation can be downloaded [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true).
 [Here](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml) you can get a example BIUinfo.xml file.
@@ -29,6 +45,8 @@ This addon is developed with the "default" directory layout of Kodi in mind  [se
 You need to add a directory where the bluray iso files are stored. This directory NEEDS to be named ".BIUfiles" (in windows name this dir ".BIUfiles."). Add in this directory an ".nomedia" file (for windows: ".nomedia.") so that Kodi wil NOT scan these iso files (Alternatively: use [advancedsettings.xml (2.3.11 & 2.3.13)](http://kodi.wiki/view/advancedsettings.xml)). The iso files can have any name.
 
 Every episode/movie is a small dummy video. It can be a small .mp4 file (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)) or a .strm file (get one of those [here](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/s01e01.strm)). The filename of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4" (if using an .mp4), but otherwise has no limitations (for a .strm file, it can be anything usefull (moviename, season/episode number)). I advice to name it such that the scraper has no problem scraping it. Also filetags like ".bluray." are possible.
+
+The recommended way to use this addon is with .strm files. 
 
 Each directory containing these dummy videos need a "BIUinfo.xml" file. This file contains the relevent info to link the dummy video file to the corresponding playlist in the blu-ray iso. [See example](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml)
 
@@ -145,13 +163,14 @@ Example "Extras" BIUinfo.xml file:
 </directorydetails>
 ```
 ## Known Issues
+Resume support works, but no resume icon is shown in the skin.
+
+Chapter support is not available (no JSON support for this, need to input this directly in the Kodi database (= not endorsed by the Kodi team)).
+
 ###. strm files
 Stream info is saved correctly, and remembered, but videos can only be viewed in windows with a list (NOT on the homepage of Kodi; last viewed, new movies, ...)
 ###.mp4 files
 Can be viewed from any location in Kodi, but stream info is constantly overwritten by Kodi, thus not correct (runtime is 0 min instead of eg 92 min for a movie).
-
-Resume support is not working (can probably get this working with an own database with resume times).
-Chapter support is not available (no JSON support for this, need to input this directly in the Kodi database (= not endorsed by the Kodi team)).
 
 ## Questions / Contact
 Please use the [Kodi forum](http://forum.kodi.tv/showthread.php?tid=280247).

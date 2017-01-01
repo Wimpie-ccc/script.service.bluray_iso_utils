@@ -168,16 +168,19 @@ class BIUplayer(xbmc.Player):
                     values = list([Global_BIU_vars["BIU_videofile_unicode"]])
                     sqlcursor_wl.execute(QUERY_CLEAR_SQLITE, values)
                     log('Resumepoint deleted.')
-        except:
-            log('Error accessing db!')
+                    
+            # Commit changes
+            sqlcon_wl.commit()
+            
+        except Exception:
+            log('Error accessing db! (Saving resume point)')
 
         finally:
-            # Commit and close db
-            sqlcon_wl.commit()
+            # Close db
             sqlcon_wl.close()
         
                
-        #if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
+        # if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
         # No stream details in the Kodi library, add them now
             
         if Global_BIU_vars["Video_Type"] == 'movie':
@@ -619,9 +622,8 @@ class BIUplayer(xbmc.Player):
                 else:
                     # No
                     log("No resume point in the db for this video.")
-            except:
-                log('Error accessing db!')
-                raise
+            except Exception:
+                log("Error accessing db! (Getting resume point)")
             finally:
                 # Close db
                 sqlcon_wl.close()
@@ -917,14 +919,18 @@ class Main:
         log('ignoresecondsatstart = %s' % str(Global_BIU_vars["ignoresecondsatstart"]))
         log('ignorepercentatend = %s' % str(Global_BIU_vars["ignorepercentatend"]))
 
-        # Init db
-        sqlcon_wl = sqlite3.connect(os.path.join(ADDONPROFILE, "BIU.db"));
-        sqlcursor_wl = sqlcon_wl.cursor()
+        try:
+            # Init db
+            sqlcon_wl = sqlite3.connect(os.path.join(ADDONPROFILE, "BIU.db"));
+            sqlcursor_wl = sqlcon_wl.cursor()
 
-        # create tables if they don't exist
-        sqlcursor_wl.execute(QUERY_CREATE_SQLITE)
-        sqlcon_wl.commit()
-        sqlcon_wl.close()
+            # create tables if they don't exist
+            sqlcursor_wl.execute(QUERY_CREATE_SQLITE)
+            sqlcon_wl.commit()
+        except Exception:
+            log("Error accessing db! (Init)")
+        finally:
+            sqlcon_wl.close()
 
 
     def _daemon(self):
