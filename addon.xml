@@ -10,7 +10,7 @@
     <extension point="xbmc.service" library="service.py" start="login"/>
     <extension point="xbmc.addon.metadata">
         <summary lang="en_GB">This addon will enhance Kodi to use bluray iso's as if it were .mkv files.</summary>
-        <summary lang="nl">Deze addon breid Kodi uit zodat Kodi bluray iso files kan gebruiken alsof the .mkv files zijn.</summary>
+        <summary lang="nl">Deze addon breid Kodi uit zodat Kodi bluray iso files kan gebruiken alsof het .mkv files zijn.</summary>
         <description lang="en_GB">Use this addon to import bluray iso's of your favourite tv shows. Multiple episodes in an iso file are supported, scrape those as if they are individual files. Skip "Previously in ..." on your tv episodes. Get access to extras in the iso file, set audio and subtitle per episode. Use this addon so Kodi can access different cut's of a movie, properly scrape the movies on a multi-movie bluray iso file.</description>
         <description lang="nl">Gebruik deze addon om de afleveringen in een bluray iso van je tv show in Kodi te importeren. Meerdere afleveringen per iso file zijn ondersteund, importeer deze alsof het individuele files zijn. Spring over "Vorige keer in..." bij jouw tv afleveringen. Krijg toegang tot de extras in de iso file. Bepaal audio en ondertiteling per episode. Gebruik deze addon om verschillende versies in Kodi te importeren. Importeer de verschillende films op een iso file.</description>
         <disclaimer lang="en_GB">No warranty what so ever, use at own risc.</disclaimer>

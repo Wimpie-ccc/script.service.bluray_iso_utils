@@ -30,6 +30,8 @@ You need to add a directory where the bluray iso files are stored. This director
 
 Every episode/movie is a small dummy video. It can be a small .mp4 file (get one [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/BIU_Black_Animation.720p.mp4?raw=true)) or a .strm file (get one of those [here](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/s01e01.strm)). The filename of the dummy video is the name of the episode or movie. It MUST end with ".BIUvideo.mp4" (if using an .mp4), but otherwise has no limitations (for a .strm file, it can be anything usefull (moviename, season/episode number)). I advice to name it such that the scraper has no problem scraping it. Also filetags like ".bluray." are possible.
 
+The recommended way to use this addon is with .strm files. 
+
 Each directory containing these dummy videos need a "BIUinfo.xml" file. This file contains the relevent info to link the dummy video file to the corresponding playlist in the blu-ray iso. [See example](https://raw.githubusercontent.com/Wimpie-ccc/helperfiles/master/BIUinfo.xml)
 
 TV show example
