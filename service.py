@@ -22,14 +22,28 @@ import xbmc, xbmcgui, xbmcaddon, xbmcvfs
 import resources.lib.utils as utils
 from resources.lib.utils import log
 from resources.lib.utils import settings
-import sys, re, json, time, ntpath
+import sys, re, os, json, time, ntpath
 import xml.etree.ElementTree as ET
+import sqlite3
+#import mysql.connector
 
 ADDON        = utils.ADDON
 ADDONVERSION = utils.ADDONVERSION
 ADDONNAME    = utils.ADDONNAME
 ADDONPATH    = utils.ADDONPATH
 ICON         = utils.ICON
+ADDONPROFILE = utils.ADDONPROFILE
+
+# Create the table
+QUERY_CREATE_SQLITE = "CREATE TABLE IF NOT EXISTS video_resume (filename TEXT PRIMARY KEY, resumepoint INTEGER)"
+# query the wanted video out of the db
+QUERY_SELECT_SQLITE = "SELECT * FROM video_resume WHERE filename = ?"
+# insert new entry
+QUERY_INSERT_SQLITE = "INSERT OR IGNORE INTO video_resume (filename, resumepoint) VALUES (?, ?)"
+# update entry
+QUERY_UPDATE_SQLITE = "UPDATE video_resume SET resumepoint = ? WHERE filename  = ?"
+# delete entry
+QUERY_CLEAR_SQLITE = "DELETE FROM video_resume WHERE filename = ?"
 
 # Global vars.
 Global_BIU_vars = {"Default_stop_time": 9999999,    # No video is that long
@@ -41,6 +55,7 @@ Global_BIU_vars = {"Default_stop_time": 9999999,    # No video is that long
                    "Video_Type": "",                # movie, episode, unknown
                    "Update_Streamdetails": False,   # streamdetails in Kodi library != []
                    "Video_ID": -1,                  # Needed for JSON calls
+                   "BIU_videofile_unicode": "",     # ID used in resume db
                    "playcountminimumpercent": 90,   # Init, for watched (Kodi default)
                    "ignoresecondsatstart": 180,     # Init, for resumepoint (Kodi default)
                    "ignorepercentatend": 8,         # Init, for resumepoint (Kodi default)
@@ -62,7 +77,7 @@ class BIUmonitor(xbmc.Monitor):
     def onSettingsChanged(self):
         settings.init()
         settings.readSettings()
-        
+
 # Our player class
 class BIUplayer(xbmc.Player):
     def __init__(self):
@@ -73,6 +88,7 @@ class BIUplayer(xbmc.Player):
         self.reqsubtitle = -1
         self.isPlayingBIUBluRay = False     # Flag that indicates if we are (or just have) playing a BIUfile type video
         self.ExtSubFile = ''
+        self.dbPath = os.path.join(ADDONPROFILE, "BIU.db")
 
     # Convert the seektime in the filename (format: uu_mm_ss) to seconds.
     # result = (3600 * uu) + (60 * mm) + ss
@@ -82,6 +98,13 @@ class BIUplayer(xbmc.Player):
         secs = int(file_time[6:])
         result_int = (3600 * hours) + (60 * mins) + secs
         return result_int
+
+    # Convert the secs time to normal hh:mm:ss time
+    def ConvertSecsToTime(self, secs):
+        hours = secs / 3600
+        mins = (secs - (3600 * hours)) / 60
+        secs = secs - (3600 * hours) - (60 * mins)
+        return str(hours) + ":" + str(mins) + ":" + str(secs)
 
     # This is the exit handler, if something goes wrong.
     # Make function so I forget nothing...
@@ -106,20 +129,38 @@ class BIUplayer(xbmc.Player):
             # Increase playcount with 1
             Global_BIU_vars["PlayCount"] = Global_BIU_vars["PlayCount"] + 1
             log('Playcount increased by 1 to: %s' % Global_BIU_vars["PlayCount"])
-
-
-
-        '''    
+        
         # Check if resumepoint needs to be set
         if ((Global_BIU_vars["ignoresecondsatstart"] < Global_BIU_vars["Current_video_time"]) and (Percent_played < (100 - Global_BIU_vars["ignorepercentatend"]))):
             # Resume point is needed
             resume_point_int = Global_BIU_vars["Current_video_time"]
             log('Set resumepoint to: %s' % resume_point_int)
+            
+            # Open db
+            sqlcon_wl = sqlite3.connect(self.dbPath);
+            sqlcursor_wl = sqlcon_wl.cursor()
+
+            # Check if a resume for this video already exist
+            values = list([Global_BIU_vars["BIU_videofile_unicode"]])
+            sqlcursor_wl.execute(QUERY_SELECT_SQLITE, values)
+            ret = sqlcursor_wl.fetchall()
+            # Check if we need to UPDATE or INSERT
+            if ret != []:
+                # Already an entry in the db, UPDATE
+                values = list([resume_point_int, Global_BIU_vars["BIU_videofile_unicode"]])
+                sqlcursor_wl.execute(QUERY_UPDATE_SQLITE, values)
+            else:
+                # New entry in db needed, INSERT
+                values = list([Global_BIU_vars["BIU_videofile_unicode"], resume_point_int])
+                sqlcursor_wl.execute(QUERY_INSERT_SQLITE, values)
+
+            # Commit and close db
+            sqlcon_wl.commit()
+            sqlcon_wl.close()
         else:
             # No resume point needs to be set (=0)
-            resume_point_int = 0
             log('Resumepoint is not needed.')
-        '''
+        
                
         #if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
         # No stream details in the Kodi library, add them now
@@ -133,7 +174,6 @@ class BIUplayer(xbmc.Player):
         JSON_req = {"jsonrpc": "2.0",
                     "method": jsonmethod,
                     "params": {idfieldname: Global_BIU_vars["Video_ID"],
-                               '''"resume": {"position": resume_point_int}, # removed until I know how to get result from the resume/startfrom beginning dialog '''
                                "lastplayed": utils.TimeStamptosqlDateTime(int(time.time())),
                                "playcount": Global_BIU_vars["PlayCount"]},
                     "id": 1}
@@ -238,6 +278,7 @@ class BIUplayer(xbmc.Player):
             # This is the first pass of our service script
             log('First pass of the service script')
             Global_BIU_vars["Current_video_time"] = 0	    # Init
+            Global_BIU_vars["BIU_videofile_unicode"] = BIU_videofile_unicode	    # Init
             Global_BIU_vars["Video_ID"] = -1	            # Init
             Global_BIU_vars["PlayCount"] = 0	            # Init
             Global_BIU_vars["Update_Streamdetails"] = False # Init
@@ -279,7 +320,7 @@ class BIUplayer(xbmc.Player):
                                                           "lastplayed",
                                                           "originaltitle",
                                                           "playcount", "plot", "productioncode",
-                                                          "rating", "runtime", #"resume",
+                                                          "rating", "runtime", "resume",
                                                           "season", "showtitle", "streamdetails",
                                                           "thumbnail", "title", "tvshowid",
                                                           "uniqueid", "userrating",
@@ -538,6 +579,35 @@ class BIUplayer(xbmc.Player):
             myescapedisofile_UTF8 = 'bluray://' + myescapedisofile_UTF8 + '/BDMV/PLAYLIST/' + myplaylistnumber_UTF8 + '.mpls'
             log("Myescapedisofile_UTF8 = %s" % myescapedisofile_UTF8)
 
+            # Get resume info from the db
+            # Open db
+            sqlcon_wl = sqlite3.connect(self.dbPath);
+            sqlcursor_wl = sqlcon_wl.cursor()
+            # Check if a resume point for this video exist
+            values = list([Global_BIU_vars["BIU_videofile_unicode"]])
+            sqlcursor_wl.execute(QUERY_SELECT_SQLITE, values)
+            ret = sqlcursor_wl.fetchall()
+            # Is there a valid resume point in the db?
+            if ret != []:
+                # Yes
+                log("ret = %s" % ret)
+                Global_BIU_vars["Resume_Time"] = int(ret[0][1])
+                log("Valid resumepoint in the db for this video is: %s" % str(Global_BIU_vars["Resume_Time"]))
+
+                # Check if the user wants to resume this video
+                dialog = xbmcgui.Dialog()
+                ret = dialog.yesno('Kodi', 'Do you want this video to resume from %s ?'% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
+                log("ret_db = %s" % ret)
+                if not ret:
+                    # User doesn't want to resume, set resumetime to 0
+                    log("User does not want to resume this video.")
+                    Global_BIU_vars["Resume_Time"] = 0
+            else:
+                # No
+                log("No resume point in the db for this video.")
+            # Close db
+            sqlcon_wl.close()
+            
             # Get the starttime (if specified)
             Global_BIU_vars["Start_time"] = 0        # We are playing a new video, so init self.Starttime
             if mystarttime_UTF8 != None:             # A starttime was specified in the .xml file.
@@ -545,7 +615,9 @@ class BIUplayer(xbmc.Player):
                     Global_BIU_vars["Start_time"] = self.ConvertTimeToSecs(mystarttime_UTF8)
                 except Exception:
                     log('Error converting starttime. Using 0 sec instead.')
-                    Global_BIU_vars["Start_time"] = 0 
+                    Global_BIU_vars["Start_time"] = 0
+            # Add the resumetime to the starttime
+            Global_BIU_vars["Start_time"] = Global_BIU_vars["Start_time"] + Global_BIU_vars["Resume_Time"]
             log('Starttime = %s seconds' % Global_BIU_vars["Start_time"])
 
             # Get the stoptime (if specified)
@@ -593,7 +665,6 @@ class BIUplayer(xbmc.Player):
             except Exception:
                 log('No valid subtitlestream specified in the .xml file!')
 
-
             # Play the correct bluray playlist
             # Fill first a listitem with the values of the .BIUfile.mp3 file. This way we get the correct mediainfo
             # while playing our bluray playlist. Otherwise this is empty (thumb picture) or 00800.mpls as name...
@@ -614,20 +685,20 @@ class BIUplayer(xbmc.Player):
 
             # Set the player/videoplayer infolabels
             # First infolabels used for both movie and tv shows
-            mylistitems.setInfo('video', {'mediatype': Global_BIU_vars["Video_Type"],
-                                          'votes': Global_video_dict["BIU_Votes_unicode"], 
-					  'rating': Global_video_dict["BIU_Rating_unicode"], 
-					  'title': Global_video_dict["BIU_Title_unicode"], 
-					  'plot': Global_video_dict["BIU_Plot_unicode"], 
-                                          'writer' : Global_video_dict["BIU_Writer_unicode"],
+            mylistitems.setInfo('video', {'castandrole': myactor_list,
+                                          'dateadded': Global_video_dict["BIU_DateAdded_unicode"],
                                           'director': Global_video_dict["BIU_Director_unicode"],
                                           'lastplayed': Global_video_dict["BIU_LastPlayed_unicode"],
-                                          'runtime': Global_video_dict["BIU_RunTime_unicode"],
-                                          'dateadded': Global_video_dict["BIU_DateAdded_unicode"],
-                                          'userrating': Global_video_dict["BIU_UserRating_unicode"],
+                                          'mediatype': Global_BIU_vars["Video_Type"],
+                                          'originaltitle': Global_video_dict["BIU_OriginalTitle_unicode"],
                                           'playcount': Global_BIU_vars["PlayCount"],
-                                          'castandrole': myactor_list,
-                                          'originaltitle': Global_video_dict["BIU_OriginalTitle_unicode"]})
+					  'plot': Global_video_dict["BIU_Plot_unicode"], 
+					  'rating': Global_video_dict["BIU_Rating_unicode"], 
+                                          'runtime': Global_video_dict["BIU_RunTime_unicode"],
+					  'title': Global_video_dict["BIU_Title_unicode"], 
+                                          'userrating': Global_video_dict["BIU_UserRating_unicode"],
+                                          'votes': Global_video_dict["BIU_Votes_unicode"], 
+                                          'writer' : Global_video_dict["BIU_Writer_unicode"]})
             # Movie specific infolabels
             if Global_BIU_vars["Video_Type"] ==  u'movie':
                 # Convert genre list "[u'Comedy', u'Drama', u'Music', u'Mystery']" into string
@@ -638,22 +709,22 @@ class BIUplayer(xbmc.Player):
                 Genre_string = Genre_string[:-3]
                 log('Genre = %s' % Genre_string)
                 
-                mylistitems.setInfo('video', { 'plotoutline': Global_video_dict["BIU_PlotOutline_unicode"],
-                                               'mpaa': Global_video_dict["BIU_mpaa_unicode"],
-                                               'studio': Global_video_dict["BIU_Studio_unicode"],
-                                               'genre': Genre_string,
-                                               'premiered': Global_video_dict["BIU_Premiered_unicode"],
-                                               'tagline': Global_video_dict["BIU_Tagline_unicode"],
-                                               'sorttitle': Global_video_dict["BIU_SortTitle_unicode"],
-                                               'trailer': Global_video_dict["BIU_Trailer_unicode"],
-                                               'code': Global_video_dict["BIU_imdbNumber_unicode"]})
+                mylistitems.setInfo('video', {'code': Global_video_dict["BIU_imdbNumber_unicode"],
+                                              'genre': Genre_string,
+                                              'mpaa': Global_video_dict["BIU_mpaa_unicode"],
+                                              'plotoutline': Global_video_dict["BIU_PlotOutline_unicode"],
+                                              'premiered': Global_video_dict["BIU_Premiered_unicode"],
+                                              'sorttitle': Global_video_dict["BIU_SortTitle_unicode"],
+                                              'studio': Global_video_dict["BIU_Studio_unicode"],
+                                              'tagline': Global_video_dict["BIU_Tagline_unicode"],
+                                              'trailer': Global_video_dict["BIU_Trailer_unicode"]})
                 # Global_video_dict["ListItem_setID_unicode"] not used yet
             # TV show specific infolabels
             elif Global_BIU_vars["Video_Type"] ==  u'episode':
-                mylistitems.setInfo('video', { 'season': Global_video_dict["BIU_Season_unicode"],
-                                               'tvshowtitle': Global_video_dict["BIU_TVShowTitle_unicode"],
-                                               'aired': Global_video_dict["BIU_FirstAired_unicode"],
-                                               'episode': Global_video_dict["BIU_Episode_unicode"]})
+                mylistitems.setInfo('video', {'aired': Global_video_dict["BIU_FirstAired_unicode"],
+                                              'episode': Global_video_dict["BIU_Episode_unicode"],
+                                              'season': Global_video_dict["BIU_Season_unicode"],
+                                              'tvshowtitle': Global_video_dict["BIU_TVShowTitle_unicode"]})
 
             # Now play the bluray playlist with the correct infolabels/starttime...
             self.play(myescapedisofile_UTF8, mylistitems)
@@ -828,6 +899,16 @@ class Main:
         log('playcountminimumpercent = %s' % str(Global_BIU_vars["playcountminimumpercent"]))
         log('ignoresecondsatstart = %s' % str(Global_BIU_vars["ignoresecondsatstart"]))
         log('ignorepercentatend = %s' % str(Global_BIU_vars["ignorepercentatend"]))
+
+        # Init db
+        sqlcon_wl = sqlite3.connect(os.path.join(ADDONPROFILE, "BIU.db"));
+        sqlcursor_wl = sqlcon_wl.cursor()
+
+        # create tables if they don't exist
+        sqlcursor_wl.execute(QUERY_CREATE_SQLITE)
+        sqlcon_wl.commit()
+        sqlcon_wl.close()
+
 
     def _daemon(self):
 	# Needed for watched state en resumepoint
