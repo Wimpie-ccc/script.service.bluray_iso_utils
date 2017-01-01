@@ -131,11 +131,7 @@ class BIUplayer(xbmc.Player):
             log('Playcount increased by 1 to: %s' % Global_BIU_vars["PlayCount"])
         
         # Check if resumepoint needs to be set
-        if ((Global_BIU_vars["ignoresecondsatstart"] < Global_BIU_vars["Current_video_time"]) and (Percent_played < (100 - Global_BIU_vars["ignorepercentatend"]))):
-            # Resume point is needed
-            resume_point_int = Global_BIU_vars["Current_video_time"]
-            log('Set resumepoint to: %s' % resume_point_int)
-            
+        try:
             # Open db
             sqlcon_wl = sqlite3.connect(self.dbPath);
             sqlcursor_wl = sqlcon_wl.cursor()
@@ -143,23 +139,42 @@ class BIUplayer(xbmc.Player):
             # Check if a resume for this video already exist
             values = list([Global_BIU_vars["BIU_videofile_unicode"]])
             sqlcursor_wl.execute(QUERY_SELECT_SQLITE, values)
-            ret = sqlcursor_wl.fetchall()
-            # Check if we need to UPDATE or INSERT
-            if ret != []:
-                # Already an entry in the db, UPDATE
-                values = list([resume_point_int, Global_BIU_vars["BIU_videofile_unicode"]])
-                sqlcursor_wl.execute(QUERY_UPDATE_SQLITE, values)
-            else:
-                # New entry in db needed, INSERT
-                values = list([Global_BIU_vars["BIU_videofile_unicode"], resume_point_int])
-                sqlcursor_wl.execute(QUERY_INSERT_SQLITE, values)
+            db_ret = sqlcursor_wl.fetchall()
 
+            if ((Global_BIU_vars["ignoresecondsatstart"] < Global_BIU_vars["Current_video_time"]) and (Percent_played < (100 - Global_BIU_vars["ignorepercentatend"]))):
+                # Resume point is needed
+                resume_point_int = Global_BIU_vars["Current_video_time"]
+                log('Set resumepoint to: %s' % resume_point_int)
+            
+                # Check if we need to UPDATE or INSERT
+                if db_ret != []:
+                    # Already an entry in the db, UPDATE
+                    values = list([resume_point_int, Global_BIU_vars["BIU_videofile_unicode"]])
+                    sqlcursor_wl.execute(QUERY_UPDATE_SQLITE, values)
+                    log('Resumepoint updated.')
+                else:
+                    # New entry in db needed, INSERT
+                    values = list([Global_BIU_vars["BIU_videofile_unicode"], resume_point_int])
+                    sqlcursor_wl.execute(QUERY_INSERT_SQLITE, values)
+                    log('New resumepoint inserted.')
+ 
+            else:
+                # No resume point needs to be set (=0)
+                log('Resumepoint is not needed.')
+
+                # Delete resume point (if needed)
+                if db_ret != []:
+                    # An entry in the db exists, DELETE
+                    values = list([Global_BIU_vars["BIU_videofile_unicode"]])
+                    sqlcursor_wl.execute(QUERY_CLEAR_SQLITE, values)
+                    log('Resumepoint deleted.')
+        except:
+            log('Error accessing db!')
+
+        finally:
             # Commit and close db
             sqlcon_wl.commit()
             sqlcon_wl.close()
-        else:
-            # No resume point needs to be set (=0)
-            log('Resumepoint is not needed.')
         
                
         #if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
@@ -580,33 +595,36 @@ class BIUplayer(xbmc.Player):
             log("Myescapedisofile_UTF8 = %s" % myescapedisofile_UTF8)
 
             # Get resume info from the db
-            # Open db
-            sqlcon_wl = sqlite3.connect(self.dbPath);
-            sqlcursor_wl = sqlcon_wl.cursor()
-            # Check if a resume point for this video exist
-            values = list([Global_BIU_vars["BIU_videofile_unicode"]])
-            sqlcursor_wl.execute(QUERY_SELECT_SQLITE, values)
-            ret = sqlcursor_wl.fetchall()
-            # Is there a valid resume point in the db?
-            if ret != []:
-                # Yes
-                log("ret = %s" % ret)
-                Global_BIU_vars["Resume_Time"] = int(ret[0][1])
-                log("Valid resumepoint in the db for this video is: %s" % str(Global_BIU_vars["Resume_Time"]))
+            try:
+                # Open db
+                sqlcon_wl = sqlite3.connect(self.dbPath);
+                sqlcursor_wl = sqlcon_wl.cursor()
+                # Check if a resume point for this video exist
+                values = list([Global_BIU_vars["BIU_videofile_unicode"]])
+                sqlcursor_wl.execute(QUERY_SELECT_SQLITE, values)
+                db_ret = sqlcursor_wl.fetchall()
+                # Is there a valid resume point in the db?
+                if db_ret != []:
+                    # Yes
+                    Global_BIU_vars["Resume_Time"] = int(db_ret[0][1])
+                    log("Valid resumepoint in the db for this video is: %s" % str(Global_BIU_vars["Resume_Time"]))
 
-                # Check if the user wants to resume this video
-                dialog = xbmcgui.Dialog()
-                ret = dialog.yesno('Kodi', 'Do you want this video to resume from %s ?'% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
-                log("ret_db = %s" % ret)
-                if not ret:
-                    # User doesn't want to resume, set resumetime to 0
-                    log("User does not want to resume this video.")
-                    Global_BIU_vars["Resume_Time"] = 0
-            else:
-                # No
-                log("No resume point in the db for this video.")
-            # Close db
-            sqlcon_wl.close()
+                    # Check if the user wants to resume this video
+                    dialog = xbmcgui.Dialog()
+                    dialog_ret = dialog.yesno('Kodi', 'Do you want this video to resume from %s ?'% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
+                    if not dialog_ret:
+                        # User doesn't want to resume, set resumetime to 0
+                        log("User does not want to resume this video.")
+                        Global_BIU_vars["Resume_Time"] = 0
+                else:
+                    # No
+                    log("No resume point in the db for this video.")
+            except:
+                log('Error accessing db!')
+                raise
+            finally:
+                # Close db
+                sqlcon_wl.close()
             
             # Get the starttime (if specified)
             Global_BIU_vars["Start_time"] = 0        # We are playing a new video, so init self.Starttime
@@ -616,8 +634,6 @@ class BIUplayer(xbmc.Player):
                 except Exception:
                     log('Error converting starttime. Using 0 sec instead.')
                     Global_BIU_vars["Start_time"] = 0
-            # Add the resumetime to the starttime
-            Global_BIU_vars["Start_time"] = Global_BIU_vars["Start_time"] + Global_BIU_vars["Resume_Time"]
             log('Starttime = %s seconds' % Global_BIU_vars["Start_time"])
 
             # Get the stoptime (if specified)
@@ -672,10 +688,11 @@ class BIUplayer(xbmc.Player):
             mylistitems = xbmcgui.ListItem (Global_video_dict["BIU_Title_unicode"])
             mylistitems.setArt({'thumb': Global_video_dict["BIU_Art_Thumb_unicode"]})
             mylistitems.setArt({'poster': Global_video_dict["BIU_Art_Poster_unicode"]})
-            # If Global_start_time <> 0 then start the video with the correct starttime (StartOffset).
-            if Global_BIU_vars["Start_time"] != 0:
-                mylistitems.setProperty('StartOffset', str(Global_BIU_vars["Start_time"]))  # Is better alternative to 'start and then seek'
-
+            # Add the resumetime to the starttime
+            startplayingfrom = Global_BIU_vars["Start_time"] + Global_BIU_vars["Resume_Time"]
+            # If startplayingfrom <> 0 then start the video with the correct starttime (StartOffset).
+            if startplayingfrom != 0:
+                mylistitems.setProperty('StartOffset', str(startplayingfrom))  # Is better alternative to 'start and then seek'
             # Convert "cast" [{thumbnail, role, name, order}, {thumbnail, role, name, order}] to
             # [(name, role), (name, role)].
             myactor_list = []
