@@ -147,14 +147,14 @@ Example "Extras" BIUinfo.xml file:
 </directorydetails>
 ```
 ## Known Issues
+Resume support works, but no resume icon is shown in the skin.
+
+Chapter support is not available (no JSON support for this, need to input this directly in the Kodi database (= not endorsed by the Kodi team)).
+
 ###. strm files
 Stream info is saved correctly, and remembered, but videos can only be viewed in windows with a list (NOT on the homepage of Kodi; last viewed, new movies, ...)
 ###.mp4 files
 Can be viewed from any location in Kodi, but stream info is constantly overwritten by Kodi, thus not correct (runtime is 0 min instead of eg 92 min for a movie).
-
-Resume support works, but no resume icon is shown in the skin.
-
-Chapter support is not available (no JSON support for this, need to input this directly in the Kodi database (= not endorsed by the Kodi team)).
 
 ## Questions / Contact
 Please use the [Kodi forum](http://forum.kodi.tv/showthread.php?tid=280247).
