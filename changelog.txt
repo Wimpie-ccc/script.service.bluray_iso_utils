@@ -1,3 +1,6 @@
+v0.2.0 (2017-01-01)
+- Resumepoint support (using a local db)
+
 v0.1.6  (2016-09-09)
 - Made changes so both .mp4 and .strm files can be used
 
@@ -21,6 +24,5 @@ v0.1.0  (2016-06-19)
 - Initial release
 
 ToDo (if possible):
-- Resume point (needs own DB)
 - Chapters (needs own DB)
 - Scraping (this will be the last to add)
