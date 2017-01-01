@@ -26,3 +26,8 @@ v0.1.0  (2016-06-19)
 ToDo (if possible):
 - Chapters (needs own DB)
 - Scraping (this will be the last to add)
+
+Wish list:
+- A (video)player.strmpathandfilename or (video)player.strmpath & (video)player.strmfilename infolabel
+- A way to get the user choice from the resume video dialog (an infolabel?)
+- The possibility to get and set chapter info through JSON
