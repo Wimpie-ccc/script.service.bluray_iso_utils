@@ -20,10 +20,15 @@ This is done through the use of .xml and dummy video files (.mp4 files or .strm 
 Use install from [zip](https://github.com/Wimpie-ccc/script.service.bluray_iso_utils/archive/master.zip) file. Github then creates a .zip file with a not correct filename and directory.
 
 So:
+
 download script.service.bluray_iso_utils-master.zip
+
 extract script.service.bluray_iso_utils-master.zip
+
 rename "script.service.bluray_iso_utils-master" to "script.service.bluray_iso_utils"
+
 make new .zip file from this directory and make sure it is named "script.service.bluray_iso_utils.zip"
+
 install this .zip file in Kodi
 
 Or get it [here](https://github.com/Wimpie-ccc/helperfiles/blob/master/script.service.bluray_iso_utils.zip?raw=true)
