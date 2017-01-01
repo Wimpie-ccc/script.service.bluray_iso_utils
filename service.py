@@ -22,14 +22,28 @@ import xbmc, xbmcgui, xbmcaddon, xbmcvfs
 import resources.lib.utils as utils
 from resources.lib.utils import log
 from resources.lib.utils import settings
-import sys, re, json, time, ntpath
+import sys, re, os, json, time, ntpath
 import xml.etree.ElementTree as ET
+import sqlite3
+#import mysql.connector
 
 ADDON        = utils.ADDON
 ADDONVERSION = utils.ADDONVERSION
 ADDONNAME    = utils.ADDONNAME
 ADDONPATH    = utils.ADDONPATH
 ICON         = utils.ICON
+ADDONPROFILE = utils.ADDONPROFILE
+
+# Create the table
+QUERY_CREATE_SQLITE = "CREATE TABLE IF NOT EXISTS video_resume (filename TEXT PRIMARY KEY, resumepoint INTEGER)"
+# query the wanted video out of the db
+QUERY_SELECT_SQLITE = "SELECT * FROM video_resume WHERE filename = ?"
+# insert new entry
+QUERY_INSERT_SQLITE = "INSERT OR IGNORE INTO video_resume (filename, resumepoint) VALUES (?, ?)"
+# update entry
+QUERY_UPDATE_SQLITE = "UPDATE video_resume SET resumepoint = ? WHERE filename  = ?"
+# delete entry
+QUERY_CLEAR_SQLITE = "DELETE FROM video_resume WHERE filename = ?"
 
 # Global vars.
 Global_BIU_vars = {"Default_stop_time": 9999999,    # No video is that long
@@ -39,7 +53,9 @@ Global_BIU_vars = {"Default_stop_time": 9999999,    # No video is that long
                    "Duration": 0,                   # Time length of the video
                    "PlayCount": 0,                  # 0 = Not watched, 1 = watched
                    "Video_Type": "",                # movie, episode, unknown
+                   "Update_Streamdetails": False,   # streamdetails in Kodi library != []
                    "Video_ID": -1,                  # Needed for JSON calls
+                   "BIU_videofile_unicode": "",     # ID used in resume db
                    "playcountminimumpercent": 90,   # Init, for watched (Kodi default)
                    "ignoresecondsatstart": 180,     # Init, for resumepoint (Kodi default)
                    "ignorepercentatend": 8,         # Init, for resumepoint (Kodi default)
@@ -61,7 +77,7 @@ class BIUmonitor(xbmc.Monitor):
     def onSettingsChanged(self):
         settings.init()
         settings.readSettings()
-        
+
 # Our player class
 class BIUplayer(xbmc.Player):
     def __init__(self):
@@ -72,6 +88,7 @@ class BIUplayer(xbmc.Player):
         self.reqsubtitle = -1
         self.isPlayingBIUBluRay = False     # Flag that indicates if we are (or just have) playing a BIUfile type video
         self.ExtSubFile = ''
+        self.dbPath = os.path.join(ADDONPROFILE, "BIU.db")
 
     # Convert the seektime in the filename (format: uu_mm_ss) to seconds.
     # result = (3600 * uu) + (60 * mm) + ss
@@ -81,6 +98,13 @@ class BIUplayer(xbmc.Player):
         secs = int(file_time[6:])
         result_int = (3600 * hours) + (60 * mins) + secs
         return result_int
+
+    # Convert the secs time to normal hh:mm:ss time
+    def ConvertSecsToTime(self, secs):
+        hours = secs / 3600
+        mins = (secs - (3600 * hours)) / 60
+        secs = secs - (3600 * hours) - (60 * mins)
+        return str(hours) + ":" + str(mins) + ":" + str(secs)
 
     # This is the exit handler, if something goes wrong.
     # Make function so I forget nothing...
@@ -93,9 +117,8 @@ class BIUplayer(xbmc.Player):
     def UpdateDBIfNeeded(self):
         global Global_BIU_vars
         
-        log('Checking if watched flag needs to be set.')
-		
         # Calculate how far we are in the video when we stopped
+        log('Checking if watched flag needs to be set.')
         try:
             Percent_played = (100 * (Global_BIU_vars["Current_video_time"] - Global_BIU_vars["Start_time"])) / Global_BIU_vars["Duration"]
         except Exception: # Could divide by zero
@@ -106,25 +129,66 @@ class BIUplayer(xbmc.Player):
             # Increase playcount with 1
             Global_BIU_vars["PlayCount"] = Global_BIU_vars["PlayCount"] + 1
             log('Playcount increased by 1 to: %s' % Global_BIU_vars["PlayCount"])
-        '''# Check if resumepoint needs to be set
-        if (Global_BIU_vars["ignoresecondsatstart"] < Global_BIU_vars["Current_video_time"]) and ((100 - Global_BIU_vars["ignorepercentatend"]) < Percent_played):
-            # Resume point is needed
-            resume_point_int = Global_BIU_vars["Current_video_time"]
-            log('Set resumepoint to: %s' % resume_point_int)
-        else:
-            # No resume point needs to be set (=0)
-            resume_point_int = 0
-            log('Resumepoint is not needed.')'''
+        
+        # Check if resumepoint needs to be set
+        try:
+            # Open db
+            sqlcon_wl = sqlite3.connect(self.dbPath);
+            sqlcursor_wl = sqlcon_wl.cursor()
+
+            # Check if a resume for this video already exist
+            values = list([Global_BIU_vars["BIU_videofile_unicode"]])
+            sqlcursor_wl.execute(QUERY_SELECT_SQLITE, values)
+            db_ret = sqlcursor_wl.fetchall()
+
+            if ((Global_BIU_vars["ignoresecondsatstart"] < Global_BIU_vars["Current_video_time"]) and (Percent_played < (100 - Global_BIU_vars["ignorepercentatend"]))):
+                # Resume point is needed
+                resume_point_int = Global_BIU_vars["Current_video_time"]
+                log('Set resumepoint to: %s' % resume_point_int)
+            
+                # Check if we need to UPDATE or INSERT
+                if db_ret != []:
+                    # Already an entry in the db, UPDATE
+                    values = list([resume_point_int, Global_BIU_vars["BIU_videofile_unicode"]])
+                    sqlcursor_wl.execute(QUERY_UPDATE_SQLITE, values)
+                    log('Resumepoint updated.')
+                else:
+                    # New entry in db needed, INSERT
+                    values = list([Global_BIU_vars["BIU_videofile_unicode"], resume_point_int])
+                    sqlcursor_wl.execute(QUERY_INSERT_SQLITE, values)
+                    log('New resumepoint inserted.')
+ 
+            else:
+                # No resume point needs to be set (=0)
+                log('Resumepoint is not needed.')
+
+                # Delete resume point (if needed)
+                if db_ret != []:
+                    # An entry in the db exists, DELETE
+                    values = list([Global_BIU_vars["BIU_videofile_unicode"]])
+                    sqlcursor_wl.execute(QUERY_CLEAR_SQLITE, values)
+                    log('Resumepoint deleted.')
+        except:
+            log('Error accessing db!')
+
+        finally:
+            # Commit and close db
+            sqlcon_wl.commit()
+            sqlcon_wl.close()
+        
                
-        # Update the Kodi library through JSON
+        #if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
+        # No stream details in the Kodi library, add them now
+            
         if Global_BIU_vars["Video_Type"] == 'movie':
             jsonmethod = "VideoLibrary.SetMovieDetails"; idfieldname = "movieid"
         elif Global_BIU_vars["Video_Type"] == 'episode':
             jsonmethod = "VideoLibrary.SetEpisodeDetails"; idfieldname = "episodeid"
+
+        # Update the Kodi library through JSON
         JSON_req = {"jsonrpc": "2.0",
                     "method": jsonmethod,
                     "params": {idfieldname: Global_BIU_vars["Video_ID"],
-                               #"resume": {"position": resume_point_int}, removed until I know how to get result from the resume/startfrom beginning dialog
                                "lastplayed": utils.TimeStamptosqlDateTime(int(time.time())),
                                "playcount": Global_BIU_vars["PlayCount"]},
                     "id": 1}
@@ -139,26 +203,40 @@ class BIUplayer(xbmc.Player):
     def onPlayBackEnded(self):
         if self.isPlayingBIUBluRay:
             log('Playback ended.')
+            # Update data in Kodi DB if needed
+            if self.isPlayingBIUBluRay:
+                self.UpdateDBIfNeeded()
             # Set flag to False
             self.isPlayingBIUBluRay = False
-            # Update data in Kodi DB if needed
-            self.UpdateDBIfNeeded()
 
     # This event handler gets called when the user or a script stops the video.
     # Check here if we need to set the watched flag for this video.
     def onPlayBackStopped(self):
         if self.isPlayingBIUBluRay:
             log('Playback stopped by user/service')
+            # Update data in Kodi DB if needed
+            if self.isPlayingBIUBluRay:
+                self.UpdateDBIfNeeded()
             # Set flag to False
             self.isPlayingBIUBluRay = False
-            # Update data in Kodi DB if needed
-            self.UpdateDBIfNeeded()
+
+    # Test
+    def onPlayBackPaused(self):
+        log('Playback paused by user')
+        
+    def onPlayBackResumed(self):
+        log('Playback resumed by user')
+    
     
     def onPlayBackStarted(self):
         # Needed to get stoptime to the deamon, and for the watched state
         global Global_BIU_vars
         global Global_video_dict
-		
+
+        '''JSON_req = {"jsonrpc": "2.0", "method": "JSONRPC.Introspect", "params": { "filter": { "id": "VideoLibrary.SetMovieDetails", "type": "method" } }, "id": 1 }
+        JSON_result = utils.executeJSON(JSON_req)
+        log('JSON syntax query = %s' % JSON_result)'''              
+
 	BIU_videofile_unicode = ""	    # Init
         # See what file we are now playing. 
         Nowplaying = self.getPlayingFile()
@@ -182,7 +260,7 @@ class BIUplayer(xbmc.Player):
                 log('ListItem.FileName (.strm) = %s ' % BIU_FileName_unicode)
                 xbmc.sleep(25)
                 mycounter = mycounter + 1
-            # 10 times should be enough, if not break
+            # 10 times should be enough, if not return to Kodi
             if (BIU_FolderPath_unicode == "" or BIU_FileName_unicode == ""):
                 log('Error receiving getInfoLabel info!!')
                 # Stop playing our black video
@@ -215,8 +293,10 @@ class BIUplayer(xbmc.Player):
             # This is the first pass of our service script
             log('First pass of the service script')
             Global_BIU_vars["Current_video_time"] = 0	    # Init
+            Global_BIU_vars["BIU_videofile_unicode"] = BIU_videofile_unicode	    # Init
             Global_BIU_vars["Video_ID"] = -1	            # Init
             Global_BIU_vars["PlayCount"] = 0	            # Init
+            Global_BIU_vars["Update_Streamdetails"] = False # Init
             Global_video_dict = {}                          # Init
 		
             # Use Files.GetFileDetails to see if it is a movie or a tv episode video
@@ -247,88 +327,127 @@ class BIUplayer(xbmc.Player):
                     JSON_req = {"jsonrpc": "2.0",
                                 "method": "VideoLibrary.GetEpisodeDetails",
                                 "params": {"episodeid": Global_BIU_vars["Video_ID"],
-                                           "properties": ["title", "plot", "votes", "rating", "writer", "streamdetails",
-                                                          "firstaired", "playcount", "runtime", "director",
-                                                          "productioncode", "season", "episode", "cast", 
-                                                          "originaltitle", "showtitle", "lastplayed", #"resume",
-                                                          "thumbnail", "file", "tvshowid", "userrating",
-                                                          "dateadded", "uniqueid", "art", "fanart"]},
+                                           "properties": ["art",
+                                                          "cast",
+                                                          "dateadded", "director",
+                                                          "episode",
+                                                          "fanart", "file", "firstaired",
+                                                          "lastplayed",
+                                                          "originaltitle",
+                                                          "playcount", "plot", "productioncode",
+                                                          "rating", "runtime", "resume",
+                                                          "season", "showtitle", "streamdetails",
+                                                          "thumbnail", "title", "tvshowid",
+                                                          "uniqueid", "userrating",
+                                                          "votes",
+                                                          "writer"]},
                                 "id": "1"}
                     log('JSON_req string = %s' % json.dumps(JSON_req))
                     JSON_result = utils.executeJSON(JSON_req)
                     log('JSON VideoLibrary.GetEpisodeDetails result = %s' % JSON_result)
-                    # Extract the needed info from JSON_result and put it in our video_dict
-                    Global_video_dict["BIU_Art_Thumb_unicode"] = JSON_result["result"]["episodedetails"]["thumbnail"]
+                    # A
                     Global_video_dict["BIU_Art_Poster_unicode"] = JSON_result["result"]["episodedetails"]["art"]["tvshow.poster"]
+                    # C
                     Global_video_dict["BIU_Cast_unicode"] = JSON_result["result"]["episodedetails"]["cast"]
-                    Global_video_dict["BIU_Title_unicode"] = JSON_result["result"]["episodedetails"]["title"]
-                    Global_video_dict["BIU_TVShowTitle_unicode"] = JSON_result["result"]["episodedetails"]["showtitle"]
-                    Global_video_dict["BIU_Season_unicode"] = JSON_result["result"]["episodedetails"]["season"]
-                    Global_video_dict["BIU_Episode_unicode"] = JSON_result["result"]["episodedetails"]["episode"]
-                    Global_video_dict["BIU_UserRating_unicode"] = JSON_result["result"]["episodedetails"]["userrating"]
-                    Global_video_dict["BIU_Plot_unicode"] = JSON_result["result"]["episodedetails"]["plot"]
-                    Global_video_dict["BIU_RunTime_unicode"] = JSON_result["result"]["episodedetails"]["runtime"]
-                    Global_video_dict["BIU_FirstAired_unicode"] = JSON_result["result"]["episodedetails"]["firstaired"]
+                    # D
                     Global_video_dict["BIU_DateAdded_unicode"] = JSON_result["result"]["episodedetails"]["dateadded"]
-                    Global_video_dict["BIU_LastPlayed_unicode"] = JSON_result["result"]["episodedetails"]["lastplayed"]
-                    Global_video_dict["BIU_Votes_unicode"] = JSON_result["result"]["episodedetails"]["votes"]
-                    Global_video_dict["BIU_OriginalTitle_unicode"] = JSON_result["result"]["episodedetails"]["originaltitle"]
-                    Global_video_dict["BIU_Rating_unicode"] = JSON_result["result"]["episodedetails"]["rating"]
-                    Global_video_dict["BIU_Writer_unicode"] = JSON_result["result"]["episodedetails"]["writer"]
                     Global_video_dict["BIU_Director_unicode"] = JSON_result["result"]["episodedetails"]["director"]
-                    Global_video_dict["BIU_StreamDetails_unicode"] = JSON_result["result"]["episodedetails"]["streamdetails"]
-                    # If playcount = 0 then the video is not watched, if playcount > 0 then the video is watched
+                    # E
+                    Global_video_dict["BIU_Episode_unicode"] = JSON_result["result"]["episodedetails"]["episode"]
+                    # F (fanart, file)
+                    Global_video_dict["BIU_FirstAired_unicode"] = JSON_result["result"]["episodedetails"]["firstaired"]
+                    # L
+                    Global_video_dict["BIU_LastPlayed_unicode"] = JSON_result["result"]["episodedetails"]["lastplayed"]
+                    # O
+                    Global_video_dict["BIU_OriginalTitle_unicode"] = JSON_result["result"]["episodedetails"]["originaltitle"]
+                    # P (productioncode)
                     Global_BIU_vars["PlayCount"] = JSON_result["result"]["episodedetails"]["playcount"]
-                    # These properties are not yet used:
-                    # productioncode, ratings, resume, file, tvshowid, uniqueid, art, fanart 
-                    log('Streamdetails are %s' % Global_video_dict["BIU_StreamDetails_unicode"])
+                    Global_video_dict["BIU_Plot_unicode"] = JSON_result["result"]["episodedetails"]["plot"]
+                    # R (resume)
+                    Global_video_dict["BIU_Rating_unicode"] = JSON_result["result"]["episodedetails"]["rating"]
+                    Global_video_dict["BIU_RunTime_unicode"] = JSON_result["result"]["episodedetails"]["runtime"]
+                    # S
+                    Global_video_dict["BIU_Season_unicode"] = JSON_result["result"]["episodedetails"]["season"]
+                    Global_video_dict["BIU_TVShowTitle_unicode"] = JSON_result["result"]["episodedetails"]["showtitle"]
+                    Global_video_dict["BIU_StreamDetails_unicode"] = JSON_result["result"]["episodedetails"]["streamdetails"]
+                    # T (tvshowid)
+                    Global_video_dict["BIU_Art_Thumb_unicode"] = JSON_result["result"]["episodedetails"]["thumbnail"]
+                    Global_video_dict["BIU_Title_unicode"] = JSON_result["result"]["episodedetails"]["title"]
+                    # U (uniqueid)
+                    Global_video_dict["BIU_UserRating_unicode"] = JSON_result["result"]["episodedetails"]["userrating"]
+                    # V
+                    Global_video_dict["BIU_Votes_unicode"] = JSON_result["result"]["episodedetails"]["votes"]
+                    # W
+                    Global_video_dict["BIU_Writer_unicode"] = JSON_result["result"]["episodedetails"]["writer"]
                 elif Global_BIU_vars["Video_Type"] ==  u'movie': # we have a movie
                     log('We play a movie.')
                     # Get all the properties of the movie
                     JSON_req = {"jsonrpc": "2.0",
                                 "method": "VideoLibrary.GetMovieDetails",
                                 "params": {"movieid": Global_BIU_vars["Video_ID"],
-                                           "properties": ["title", "plot", "votes", "rating", "streamdetails",
-                                                          "studio", "playcount", "runtime", "director",
-                                                          "genre", "trailer", "tagline", "plotoutline",
-                                                          "mpaa", "imdbnumber", "sorttitle", "setid",
-                                                          "originaltitle", "lastplayed", "writer", "premiered",
-                                                          "thumbnail", "file", "userrating", #"resume",
-                                                          "dateadded", "art", "fanart", "cast"]},
+                                           "properties": ["art",
+                                                          "cast",
+                                                          "dateadded", "director",
+                                                          "fanart", "file",
+                                                          "genre",
+                                                          "imdbnumber",
+                                                          "lastplayed",
+                                                          "mpaa",
+                                                          "originaltitle",
+                                                          "playcount", "plot", "plotoutline", "premiered",
+                                                          "rating", "runtime", #"resume",
+                                                          "setid", "sorttitle", "streamdetails", "studio",
+                                                          "tagline", "thumbnail", "title", "trailer",
+                                                          "userrating",
+                                                          "votes",
+                                                          "writer"]},
                                 "id": "1"}
                     log('JSON_req string = %s' % json.dumps(JSON_req))
                     JSON_result = utils.executeJSON(JSON_req)
                     log('JSON VideoLibrary.GetMovieDetails result = %s' % JSON_result)
+                    # A
+                    Global_video_dict["BIU_Art_Poster_unicode"] = JSON_result["result"]["moviedetails"]["art"]["poster"]
+                    # C
                     Global_video_dict["BIU_Cast_unicode"] = JSON_result["result"]["moviedetails"]["cast"]
-                    Global_video_dict["BIU_Title_unicode"] = JSON_result["result"]["moviedetails"]["title"]
+                    # D
+                    Global_video_dict["BIU_DateAdded_unicode"] = JSON_result["result"]["moviedetails"]["dateadded"]
+                    Global_video_dict["BIU_Director_unicode"] = JSON_result["result"]["moviedetails"]["director"]
+                    # F (fanart, file)
+                    # G
+                    Global_video_dict["BIU_Genre_unicode"] =  JSON_result["result"]["moviedetails"]["genre"]
+                    # I
+                    Global_video_dict["BIU_imdbNumber_unicode"] = JSON_result["result"]["moviedetails"]["imdbnumber"]
+                    # L
+                    Global_video_dict["BIU_LastPlayed_unicode"] = JSON_result["result"]["moviedetails"]["lastplayed"]
+                    # M
+                    Global_video_dict["BIU_mpaa_unicode"] = JSON_result["result"]["moviedetails"]["mpaa"]
+                    # O
+                    Global_video_dict["BIU_OriginalTitle_unicode"] = JSON_result["result"]["moviedetails"]["originaltitle"]
+                    # P
+                    Global_BIU_vars["PlayCount"] = JSON_result["result"]["moviedetails"]["playcount"]
                     Global_video_dict["BIU_Plot_unicode"] = JSON_result["result"]["moviedetails"]["plot"]
-                    Global_video_dict["BIU_Votes_unicode"] = JSON_result["result"]["moviedetails"]["votes"]
+                    Global_video_dict["BIU_PlotOutline_unicode"] = JSON_result["result"]["moviedetails"]["plotoutline"]
+                    Global_video_dict["BIU_Premiered_unicode"] = JSON_result["result"]["moviedetails"]["premiered"]
+                    # R (resume)
                     Global_video_dict["BIU_Rating_unicode"] = JSON_result["result"]["moviedetails"]["rating"]
+                    Global_video_dict["BIU_RunTime_unicode"] = JSON_result["result"]["moviedetails"]["runtime"]
+                    #Global_video_dict["BIU_Resume_unicode"] = JSON_result["result"]["moviedetails"]["resume"]
+                    # S
+                    Global_video_dict["BIU_setID_unicode"] = JSON_result["result"]["moviedetails"]["setid"]
+                    Global_video_dict["BIU_SortTitle_unicode"] = JSON_result["result"]["moviedetails"]["sorttitle"]
                     Global_video_dict["BIU_StreamDetails_unicode"] = JSON_result["result"]["moviedetails"]["streamdetails"]
                     Global_video_dict["BIU_Studio_unicode"] = JSON_result["result"]["moviedetails"]["studio"]
-                    Global_video_dict["BIU_Director_unicode"] = JSON_result["result"]["moviedetails"]["director"]
-                    Global_video_dict["BIU_Genre_unicode"] =  JSON_result["result"]["moviedetails"]["genre"]
-                    Global_video_dict["BIU_Trailer_unicode"] = JSON_result["result"]["moviedetails"]["trailer"]
+                    # T
                     Global_video_dict["BIU_Tagline_unicode"] = JSON_result["result"]["moviedetails"]["tagline"]
-                    Global_video_dict["BIU_mpaa_unicode"] = JSON_result["result"]["moviedetails"]["mpaa"]
-                    Global_video_dict["BIU_PlotOutline_unicode"] = JSON_result["result"]["moviedetails"]["plotoutline"]
-                    Global_video_dict["BIU_imdbNumber_unicode"] = JSON_result["result"]["moviedetails"]["imdbnumber"]
-                    Global_video_dict["BIU_SortTitle_unicode"] = JSON_result["result"]["moviedetails"]["sorttitle"]
-                    Global_video_dict["BIU_setID_unicode"] = JSON_result["result"]["moviedetails"]["setid"]
-                    #Global_video_dict["BIU_Resume_unicode"] = JSON_result["result"]["moviedetails"]["resume"]
-                    Global_video_dict["BIU_RunTime_unicode"] = JSON_result["result"]["moviedetails"]["runtime"]
-                    Global_video_dict["BIU_OriginalTitle_unicode"] = JSON_result["result"]["moviedetails"]["originaltitle"]
-                    Global_video_dict["BIU_LastPlayed_unicode"] = JSON_result["result"]["moviedetails"]["lastplayed"]
-                    Global_video_dict["BIU_Writer_unicode"] = JSON_result["result"]["moviedetails"]["writer"]
-                    Global_video_dict["BIU_Premiered_unicode"] = JSON_result["result"]["moviedetails"]["premiered"]
-                    Global_video_dict["BIU_UserRating_unicode"] = JSON_result["result"]["moviedetails"]["userrating"]
-                    Global_video_dict["BIU_DateAdded_unicode"] = JSON_result["result"]["moviedetails"]["dateadded"]
                     Global_video_dict["BIU_Art_Thumb_unicode"] = JSON_result["result"]["moviedetails"]["thumbnail"]
-                    Global_video_dict["BIU_Art_Poster_unicode"] = JSON_result["result"]["moviedetails"]["art"]["poster"]
-                    # If playcount = 0 then the video is not watched, if playcount > 0 then the video is watched
-                    Global_BIU_vars["PlayCount"] = JSON_result["result"]["moviedetails"]["playcount"]
-                    # These properties are not yet used:
-                    # file, resume, art , fanart
+                    Global_video_dict["BIU_Title_unicode"] = JSON_result["result"]["moviedetails"]["title"]
+                    Global_video_dict["BIU_Trailer_unicode"] = JSON_result["result"]["moviedetails"]["trailer"]
+                    # U
+                    Global_video_dict["BIU_UserRating_unicode"] = JSON_result["result"]["moviedetails"]["userrating"]
+                    # V
+                    Global_video_dict["BIU_Votes_unicode"] = JSON_result["result"]["moviedetails"]["votes"]
+                    # W
+                    Global_video_dict["BIU_Writer_unicode"] = JSON_result["result"]["moviedetails"]["writer"]
                     
             except Exception:
                 log('Error getting JSON response, media is probably unknown!!')
@@ -348,8 +467,14 @@ class BIUplayer(xbmc.Player):
                 Global_video_dict["BIU_Cast_unicode"] = ""
                 Global_BIU_vars["PlayCount"] = 0
                 Global_BIU_vars["Video_ID"] = -1
+                
+            # Check if the video streamdetails are empty, if they are then we need to update the Kodi library
+            log('Streamdetails are %s' % Global_video_dict["BIU_StreamDetails_unicode"])
+            if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
+                Global_BIU_vars["Update_Streamdetails"] = True
 
             # Was this video played already?
+            # If playcount = 0 then the video is not watched, if playcount > 0 then the video is watched
             log('Playcount = %s' % Global_BIU_vars["PlayCount"])
 		
             # First validatepath to get the slashes OK,
@@ -367,8 +492,13 @@ class BIUplayer(xbmc.Player):
                 self.BIU_ExitHandler('Error reading BIUfile.xml!!')
                 return
 
-            # Init backpathiso_UTF8 so we can check if we got a match
+            # Init
             backpathiso_UTF8 = None
+            myplaylistnumber_UTF8 = None
+            mystarttime_UTF8 = None
+            mystoptime_UTF8 = None
+            myaudiostream_UTF8 = None
+            mysubtitlestream_UTF8 = None
             # Extract all settings from the BIUfile.xml file.
             for video_XML in directorydetails_XML:                              # for every video node
                 log('Videofile = %s' % (video_XML.attrib['filename']))
@@ -376,23 +506,35 @@ class BIUplayer(xbmc.Player):
                 if (video_XML.attrib['filename'] == BIU_FileName_unicode): 
                     log('Videofile and xml record match.')                      # if yes: We have a winner!!!
                     # Location of the iso file
-                    backpathiso_UTF8 = video_XML.find('isofile').text
-                    log('isofile = %s' % backpathiso_UTF8)
+                    backpathiso = video_XML.find('isofile')
+                    if backpathiso is not None:
+                        backpathiso_UTF8 = backpathiso.text
+                        log('isofile = %s' % backpathiso_UTF8)
                     # Playlist number
-                    myplaylistnumber_UTF8 = video_XML.find('playlist').text
-                    log('playlist = %s' % myplaylistnumber_UTF8)
+                    myplaylistnumber = video_XML.find('playlist')
+                    if myplaylistnumber is not None:
+                        myplaylistnumber_UTF8 = myplaylistnumber.text
+                        log('playlist = %s' % myplaylistnumber_UTF8)
                     # Starttime
-                    mystarttime_UTF8 = video_XML.find('starttime').text
-                    log('starttime = %s' % mystarttime_UTF8)
+                    mystarttime = video_XML.find('starttime')
+                    if mystarttime is not None:
+                        mystarttime_UTF8 = mystarttime.text
+                        log('starttime = %s' % mystarttime_UTF8)
                     # Stoptime
-                    mystoptime_UTF8 = video_XML.find('stoptime').text
-                    log('stoptime = %s' % mystoptime_UTF8)
+                    mystoptime = video_XML.find('stoptime')
+                    if mystoptime is not None:
+                        mystoptime_UTF8 = mystoptime.text
+                        log('stoptime = %s' % mystoptime_UTF8)
                     # Audiostream
-                    myaudiostream = video_XML.find('audiochannel').text
-                    log('audiochannel = %s' % myaudiostream)
+                    myaudiostream = video_XML.find('audiochannel')
+                    if myaudiostream is not None:
+                        myaudiostream_UTF8 = myaudiostream.text
+                        log('audiochannel = %s' % myaudiostream_UTF8)
                     # Subtitlestream
-                    mysubtitlestream = video_XML.find('subtitlechannel').text
-                    log('subtitlechannel = %s' % mysubtitlestream)
+                    mysubtitlestream = video_XML.find('subtitlechannel')
+                    if mysubtitlestream is not None:
+                        mysubtitlestream_UTF8 = mysubtitlestream.text
+                        log('subtitlechannel = %s' % mysubtitlestream_UTF8)
                     break               # No need to check the other entries, we found our match.
 
             # The base path is "BIU_Path_unicode". Normally the user would place the iso file
@@ -446,12 +588,44 @@ class BIUplayer(xbmc.Player):
             # Aaargh!!! urllib.quote does not work with unicode strings!! Great!!!
             # Encode first to UTF-8. Luckely UTF-8 works...
             myescapedisofile_UTF8 = myisofile_unicode.encode("utf-8")
-            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8)
+            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='!')
             myescapedisofile_UTF8 = 'udf://' + myescapedisofile_UTF8 + '/'
-            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='()')
+            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='()!')
             myescapedisofile_UTF8 = 'bluray://' + myescapedisofile_UTF8 + '/BDMV/PLAYLIST/' + myplaylistnumber_UTF8 + '.mpls'
             log("Myescapedisofile_UTF8 = %s" % myescapedisofile_UTF8)
 
+            # Get resume info from the db
+            try:
+                # Open db
+                sqlcon_wl = sqlite3.connect(self.dbPath);
+                sqlcursor_wl = sqlcon_wl.cursor()
+                # Check if a resume point for this video exist
+                values = list([Global_BIU_vars["BIU_videofile_unicode"]])
+                sqlcursor_wl.execute(QUERY_SELECT_SQLITE, values)
+                db_ret = sqlcursor_wl.fetchall()
+                # Is there a valid resume point in the db?
+                if db_ret != []:
+                    # Yes
+                    Global_BIU_vars["Resume_Time"] = int(db_ret[0][1])
+                    log("Valid resumepoint in the db for this video is: %s" % str(Global_BIU_vars["Resume_Time"]))
+
+                    # Check if the user wants to resume this video
+                    dialog = xbmcgui.Dialog()
+                    dialog_ret = dialog.yesno('Kodi', 'Do you want this video to resume from %s ?'% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
+                    if not dialog_ret:
+                        # User doesn't want to resume, set resumetime to 0
+                        log("User does not want to resume this video.")
+                        Global_BIU_vars["Resume_Time"] = 0
+                else:
+                    # No
+                    log("No resume point in the db for this video.")
+            except:
+                log('Error accessing db!')
+                raise
+            finally:
+                # Close db
+                sqlcon_wl.close()
+            
             # Get the starttime (if specified)
             Global_BIU_vars["Start_time"] = 0        # We are playing a new video, so init self.Starttime
             if mystarttime_UTF8 != None:             # A starttime was specified in the .xml file.
@@ -459,7 +633,7 @@ class BIUplayer(xbmc.Player):
                     Global_BIU_vars["Start_time"] = self.ConvertTimeToSecs(mystarttime_UTF8)
                 except Exception:
                     log('Error converting starttime. Using 0 sec instead.')
-                    Global_BIU_vars["Start_time"] = 0 
+                    Global_BIU_vars["Start_time"] = 0
             log('Starttime = %s seconds' % Global_BIU_vars["Start_time"])
 
             # Get the stoptime (if specified)
@@ -507,7 +681,6 @@ class BIUplayer(xbmc.Player):
             except Exception:
                 log('No valid subtitlestream specified in the .xml file!')
 
-
             # Play the correct bluray playlist
             # Fill first a listitem with the values of the .BIUfile.mp3 file. This way we get the correct mediainfo
             # while playing our bluray playlist. Otherwise this is empty (thumb picture) or 00800.mpls as name...
@@ -515,10 +688,11 @@ class BIUplayer(xbmc.Player):
             mylistitems = xbmcgui.ListItem (Global_video_dict["BIU_Title_unicode"])
             mylistitems.setArt({'thumb': Global_video_dict["BIU_Art_Thumb_unicode"]})
             mylistitems.setArt({'poster': Global_video_dict["BIU_Art_Poster_unicode"]})
-            # If Global_start_time <> 0 then start the video with the correct starttime (StartOffset).
-            if Global_BIU_vars["Start_time"] != 0:
-                mylistitems.setProperty('StartOffset', str(Global_BIU_vars["Start_time"]))  # Is better alternative to 'start and then seek'
-
+            # Add the resumetime to the starttime
+            startplayingfrom = Global_BIU_vars["Start_time"] + Global_BIU_vars["Resume_Time"]
+            # If startplayingfrom <> 0 then start the video with the correct starttime (StartOffset).
+            if startplayingfrom != 0:
+                mylistitems.setProperty('StartOffset', str(startplayingfrom))  # Is better alternative to 'start and then seek'
             # Convert "cast" [{thumbnail, role, name, order}, {thumbnail, role, name, order}] to
             # [(name, role), (name, role)].
             myactor_list = []
@@ -528,20 +702,20 @@ class BIUplayer(xbmc.Player):
 
             # Set the player/videoplayer infolabels
             # First infolabels used for both movie and tv shows
-            mylistitems.setInfo('video', {'mediatype': Global_BIU_vars["Video_Type"],
-                                          'votes': Global_video_dict["BIU_Votes_unicode"], 
-					  'rating': Global_video_dict["BIU_Rating_unicode"], 
-					  'title': Global_video_dict["BIU_Title_unicode"], 
-					  'plot': Global_video_dict["BIU_Plot_unicode"], 
-                                          'writer' : Global_video_dict["BIU_Writer_unicode"],
+            mylistitems.setInfo('video', {'castandrole': myactor_list,
+                                          'dateadded': Global_video_dict["BIU_DateAdded_unicode"],
                                           'director': Global_video_dict["BIU_Director_unicode"],
                                           'lastplayed': Global_video_dict["BIU_LastPlayed_unicode"],
-                                          'runtime': Global_video_dict["BIU_RunTime_unicode"],
-                                          'dateadded': Global_video_dict["BIU_DateAdded_unicode"],
-                                          'userrating': Global_video_dict["BIU_UserRating_unicode"],
+                                          'mediatype': Global_BIU_vars["Video_Type"],
+                                          'originaltitle': Global_video_dict["BIU_OriginalTitle_unicode"],
                                           'playcount': Global_BIU_vars["PlayCount"],
-                                          'castandrole': myactor_list,
-                                          'originaltitle': Global_video_dict["BIU_OriginalTitle_unicode"]})
+					  'plot': Global_video_dict["BIU_Plot_unicode"], 
+					  'rating': Global_video_dict["BIU_Rating_unicode"], 
+                                          'runtime': Global_video_dict["BIU_RunTime_unicode"],
+					  'title': Global_video_dict["BIU_Title_unicode"], 
+                                          'userrating': Global_video_dict["BIU_UserRating_unicode"],
+                                          'votes': Global_video_dict["BIU_Votes_unicode"], 
+                                          'writer' : Global_video_dict["BIU_Writer_unicode"]})
             # Movie specific infolabels
             if Global_BIU_vars["Video_Type"] ==  u'movie':
                 # Convert genre list "[u'Comedy', u'Drama', u'Music', u'Mystery']" into string
@@ -552,22 +726,22 @@ class BIUplayer(xbmc.Player):
                 Genre_string = Genre_string[:-3]
                 log('Genre = %s' % Genre_string)
                 
-                mylistitems.setInfo('video', { 'plotoutline': Global_video_dict["BIU_PlotOutline_unicode"],
-                                               'mpaa': Global_video_dict["BIU_mpaa_unicode"],
-                                               'studio': Global_video_dict["BIU_Studio_unicode"],
-                                               'genre': Genre_string,
-                                               'premiered': Global_video_dict["BIU_Premiered_unicode"],
-                                               'tagline': Global_video_dict["BIU_Tagline_unicode"],
-                                               'sorttitle': Global_video_dict["BIU_SortTitle_unicode"],
-                                               'trailer': Global_video_dict["BIU_Trailer_unicode"],
-                                               'code': Global_video_dict["BIU_imdbNumber_unicode"]})
+                mylistitems.setInfo('video', {'code': Global_video_dict["BIU_imdbNumber_unicode"],
+                                              'genre': Genre_string,
+                                              'mpaa': Global_video_dict["BIU_mpaa_unicode"],
+                                              'plotoutline': Global_video_dict["BIU_PlotOutline_unicode"],
+                                              'premiered': Global_video_dict["BIU_Premiered_unicode"],
+                                              'sorttitle': Global_video_dict["BIU_SortTitle_unicode"],
+                                              'studio': Global_video_dict["BIU_Studio_unicode"],
+                                              'tagline': Global_video_dict["BIU_Tagline_unicode"],
+                                              'trailer': Global_video_dict["BIU_Trailer_unicode"]})
                 # Global_video_dict["ListItem_setID_unicode"] not used yet
             # TV show specific infolabels
             elif Global_BIU_vars["Video_Type"] ==  u'episode':
-                mylistitems.setInfo('video', { 'season': Global_video_dict["BIU_Season_unicode"],
-                                               'tvshowtitle': Global_video_dict["BIU_TVShowTitle_unicode"],
-                                               'aired': Global_video_dict["BIU_FirstAired_unicode"],
-                                               'episode': Global_video_dict["BIU_Episode_unicode"]})
+                mylistitems.setInfo('video', {'aired': Global_video_dict["BIU_FirstAired_unicode"],
+                                              'episode': Global_video_dict["BIU_Episode_unicode"],
+                                              'season': Global_video_dict["BIU_Season_unicode"],
+                                              'tvshowtitle': Global_video_dict["BIU_TVShowTitle_unicode"]})
 
             # Now play the bluray playlist with the correct infolabels/starttime...
             self.play(myescapedisofile_UTF8, mylistitems)
@@ -632,10 +806,14 @@ class BIUplayer(xbmc.Player):
                 # Duration is from video duration
                 Global_BIU_vars["Duration"] = self.getTotalTime() - Global_BIU_vars["Start_time"]
             log('Video duration = %s' % str(Global_BIU_vars["Duration"]))
+
+            # Set all streamdetails so we can save
+            if Global_BIU_vars["Update_Streamdetails"] == True:
+                pass
+
+
             
 
-            BIU_videocodec = xbmc.getInfoLabel('VideoPlayer.VideoCodec').decode("utf-8")
-            log('VideoPlayer.VideoCodec = %s ' % BIU_videocodec)
             BIU_videoresolution = xbmc.getInfoLabel('VideoPlayer.VideoResolution').decode("utf-8")
             log('VideoPlayer.VideoResolution = %s ' % BIU_videoresolution)
             BIU_videoaspect = xbmc.getInfoLabel('VideoPlayer.VideoAspect').decode("utf-8")
@@ -650,6 +828,10 @@ class BIUplayer(xbmc.Player):
             log('VideoPlayer.SubtitlesLanguage = %s ' % BIU_subtitleslanguage)
             BIU_duration = xbmc.getInfoLabel('VideoPlayer.Duration').decode("utf-8")
             log('VideoPlayer.Duration = %s ' % BIU_duration)
+            BIU_videocodec = xbmc.getInfoLabel('VideoPlayer.VideoCodec').decode("utf-8")
+            log('VideoPlayer.VideoCodec = %s ' % BIU_videocodec)
+            BIU_DBID = xbmc.getInfoLabel('VideoPlayer.DBID').decode("utf-8")
+            log('VideoPlayer.DBID = %s ' % BIU_DBID)
 
 
 
@@ -720,13 +902,13 @@ class Main:
             # Get all values
             for video_XML in advancedsettings_XML:            
                 Temp = advancedsettings_XML.find("video/playcountminimumpercent")
-                if Temp != None:
+                if Temp is not None:
                     Global_BIU_vars["playcountminimumpercent"] = int(Temp.text)
                 Temp = advancedsettings_XML.find("video/ignoresecondsatstart")
-                if Temp != None:
+                if Temp is not None:
                     Global_BIU_vars["ignoresecondsatstart"] = int(Temp.text)
                 Temp = advancedsettings_XML.find("video/ignorepercentatend")
-                if Temp != None:
+                if Temp is not None:
                     Global_BIU_vars["ignorepercentatend"] = int(Temp.text)
         except Exception:
             log('Error reading advancedsettings.xml!!')
@@ -734,6 +916,16 @@ class Main:
         log('playcountminimumpercent = %s' % str(Global_BIU_vars["playcountminimumpercent"]))
         log('ignoresecondsatstart = %s' % str(Global_BIU_vars["ignoresecondsatstart"]))
         log('ignorepercentatend = %s' % str(Global_BIU_vars["ignorepercentatend"]))
+
+        # Init db
+        sqlcon_wl = sqlite3.connect(os.path.join(ADDONPROFILE, "BIU.db"));
+        sqlcursor_wl = sqlcon_wl.cursor()
+
+        # create tables if they don't exist
+        sqlcursor_wl.execute(QUERY_CREATE_SQLITE)
+        sqlcon_wl.commit()
+        sqlcon_wl.close()
+
 
     def _daemon(self):
 	# Needed for watched state en resumepoint
@@ -764,9 +956,3 @@ if (__name__ == "__main__"):
     main = Main()
     # Always logged, user should know addon is installed while debugging turned off.
     xbmc.log('%s: version %s stopped' % (ADDONNAME, ADDONVERSION), level=xbmc.LOGDEBUG)
-		
-		
-		
-		
-		
-		
