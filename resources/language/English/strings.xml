@@ -14,5 +14,6 @@
   	<string id="32830">General</string> 
 	<string id="32841">Enable Bluray iso utils service?</string>
 	<string id="32842">Enable Debug logging?</string>
+    <string id="32843">Do you want this video to resume from %s ?</string>
 	    
 </strings>

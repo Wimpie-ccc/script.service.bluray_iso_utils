@@ -173,8 +173,9 @@ class BIUplayer(xbmc.Player):
             sqlcon_wl.commit()
             
         except Exception:
-            log('Error accessing db! (Saving resume point)')
-
+            self.BIU_ExitHandler('Error accessing db! (Saving resume point)')
+            return
+        
         finally:
             # Close db
             sqlcon_wl.close()
@@ -614,7 +615,8 @@ class BIUplayer(xbmc.Player):
 
                     # Check if the user wants to resume this video
                     dialog = xbmcgui.Dialog()
-                    dialog_ret = dialog.yesno('Kodi', 'Do you want this video to resume from %s ?'% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
+                    #dialog_ret = dialog.yesno('Kodi', 'Do you want this video to resume from %s ?'% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
+                    dialog_ret = dialog.yesno('Kodi', utils.localise(32843)% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
                     if not dialog_ret:
                         # User doesn't want to resume, set resumetime to 0
                         log("User does not want to resume this video.")
@@ -623,7 +625,8 @@ class BIUplayer(xbmc.Player):
                     # No
                     log("No resume point in the db for this video.")
             except Exception:
-                log("Error accessing db! (Getting resume point)")
+                self.BIU_ExitHandler("Error accessing db! (Getting resume point)")
+                return
             finally:
                 # Close db
                 sqlcon_wl.close()
