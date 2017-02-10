@@ -187,6 +187,9 @@ class BIUplayer(xbmc.Player):
             # Close db
             if sqlcon_wl:
                 sqlcon_wl.close()
+            else:
+                log("Error setting resume info from db.")
+
         
                
         # if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
@@ -238,8 +241,11 @@ class BIUplayer(xbmc.Player):
         log("SetSubs : subtitlestream_hear_imp_int = %s" % sub_hear_imp)
         log("SetSubs : subtitlestream_int = %s" % sub_norm)
         log("SetSubs : setting_lang = %s" % setting_lang)
-        # Subs for foreign spoken languages needed?
+
+        # Init
         NormalSubsNeeded = False
+        
+        # Subs for foreign spoken languages needed?
         if setting_lang == "for_lang":
             # We need foreign spoken language subs!
             # Lets check if we have them
@@ -284,6 +290,10 @@ class BIUplayer(xbmc.Player):
             # Flag for use in pass 2
             self.Show_subs = False
             log("User doesn't want subs for this disc language.")
+
+        # If there are external subs for this .mpls, then show those always
+        if self.ExtSubFile <> '':
+            self.Show_subs = True
         
     # SetDiscAudSub(settings.prim_audio_lang, self.prim_SubDubbedLang, self.prim_SubOrigLang, starttime_plus_recap_int, starttime_int, audiostream_dubbed_int, audiostream_orig_int, subtitlestream_for_lang_int, subtitlestream_hear_imp_int, subtitlestream_int)
     def SetDiscAudSub(self, setting_disclang, setting_discsub, setting_discorig, time_recap, time_norm, aud_dubbed, aud_orig, sub_forn, sub_hear, sub_nor):
@@ -295,11 +305,14 @@ class BIUplayer(xbmc.Player):
         # Or does the user not want to see the recap?
         else:
             Global_BIU_vars["Start_time"] = time_norm
-            log("Show normal,without recap")
+            log("Show normal, without recap")
+
+        # Init
+        self.subtitle = -1
+        self.Show_subs = True
 
         # "orig" or "dubbed" ?
         # Audio language is "dubbed"
-        self.Show_subs = True
         # setting_disclang = eg settings.prim_audio_lang
         if setting_disclang == "dubbed":
             log("Audio is dubbed.")
@@ -331,7 +344,8 @@ class BIUplayer(xbmc.Player):
     # Test
     def onPlayBackPaused(self):
         log('Playback paused by user')
-        
+
+    # Test    
     def onPlayBackResumed(self):
         log('Playback resumed by user')
     
@@ -614,8 +628,9 @@ class BIUplayer(xbmc.Player):
                     backpathiso_UTF8 = backpathiso.text
                     log('isofile = %s' % backpathiso_UTF8)
                 else:
-                    # Malformed .xml file, break (TBD)
-                    pass
+                    # Bad .xml file, we need a isofile.
+                    self.BIU_ExitHandler('No valid isofile in the XML!! Aborting')
+                    return
                 # for every video node in this disc
                 for video_XML in discdetails_XML:
                     if video_XML.tag == "video":
@@ -627,7 +642,12 @@ class BIUplayer(xbmc.Player):
                             myplaylistnumber = video_XML.find('playlist')
                             if myplaylistnumber is not None:
                                 myplaylistnumber_UTF8 = myplaylistnumber.text
-                                log('playlist = %s' % myplaylistnumber_UTF8)
+                                if myplaylistnumber_UTF8 is not None:
+                                    log('playlist = %s' % myplaylistnumber_UTF8)
+                                else:
+                                    # Bad .xml file, playlist Must contain valid data
+                                    self.BIU_ExitHandler('No valid playlist in the XML!! Aborting')
+                                    return
                             # Starttime
                             starttime_plus_recap_int = 0    # Init
                             starttime_int = 0               # Init
@@ -640,14 +660,16 @@ class BIUplayer(xbmc.Player):
                                     mystarttime_no_recap = video_XML.find('starttime/no_recap')
                                     if mystarttime_no_recap is not None:
                                         mystarttime_no_recap_UTF8 = mystarttime_no_recap.text
-                                        starttime_int = self.ConvertTimeToSecs(mystarttime_no_recap_UTF8, "start")
-                                        log('Starttime (no recap) = %s' % mystarttime_no_recap_UTF8)
+                                        if mystarttime_no_recap_UTF8 is not None:
+                                            starttime_int = self.ConvertTimeToSecs(mystarttime_no_recap_UTF8, "start")
+                                            log('Starttime (no recap) = %s' % mystarttime_no_recap_UTF8)
                                     # Get starttime/plus_recap element
                                     mystarttime_plus_recap = video_XML.find('starttime/plus_recap')
                                     if mystarttime_plus_recap is not None:
                                         mystarttime_plus_recap_UTF8 = mystarttime_plus_recap.text
-                                        starttime_plus_recap_int = self.ConvertTimeToSecs(mystarttime_plus_recap_UTF8, "start")
-                                        log('Starttime (plus_recap) = %s' % mystarttime_plus_recap_UTF8)
+                                        if mystarttime_plus_recap_UTF8 is not None:
+                                            starttime_plus_recap_int = self.ConvertTimeToSecs(mystarttime_plus_recap_UTF8, "start")
+                                            log('Starttime (plus_recap) = %s' % mystarttime_plus_recap_UTF8)
                                 # Starttime element has no children,
                                 # but contains a valid (?) value
                                 else:
@@ -659,14 +681,20 @@ class BIUplayer(xbmc.Player):
                             else:
                                 # No start time found, startime = 0 secs
                                 log("No start time found, startime = 0 secs")
+                            log("Start time = %s" % starttime_int)
+                            log("Start time plus recap = %s" % starttime_plus_recap_int)
                             # Get the stoptime (if specified)
                             # We are playing a new video, so init Stop_time 
                             Global_BIU_vars["Stop_time"] = Global_BIU_vars["Default_stop_time"] 
                             mystoptime = video_XML.find('stoptime')
                             if mystoptime is not None:
+                                # We found the tag
                                 mystoptime_UTF8 = mystoptime.text
-                                stoptime_int = self.ConvertTimeToSecs(mystoptime_UTF8, "stop")
-                                Global_BIU_vars["Stop_time"] = stoptime_int
+                                # Check if the tag is empty
+                                if mystoptime_UTF8 is not None:
+                                    # Tag contains data
+                                    stoptime_int = self.ConvertTimeToSecs(mystoptime_UTF8, "stop")
+                                    Global_BIU_vars["Stop_time"] = stoptime_int
                             log('Stoptime = %s seconds' % Global_BIU_vars["Stop_time"])
                             # Audiostream
                             audiostream_orig_int = -1
@@ -680,14 +708,16 @@ class BIUplayer(xbmc.Player):
                                     myaudiostream = video_XML.find('audiochannel/original')
                                     if myaudiostream is not None:
                                         myaudiostream_UTF8 = myaudiostream.text
-                                        audiostream_orig_int = int(myaudiostream_UTF8)
-                                        log('audiochannel = %s' % myaudiostream_UTF8)
+                                        if myaudiostream_UTF8 is not None:
+                                            audiostream_orig_int = int(myaudiostream_UTF8)
+                                            log('audiochannel = %s' % myaudiostream_UTF8)
                                     # Get audiochannel/dubbed element 
                                     myaudiostream_dubbed = video_XML.find('audiochannel/dubbed')
                                     if myaudiostream_dubbed is not None:
                                         myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
-                                        audiostream_dubbed_int = int(myaudiostream_dubbed_UTF8)
-                                        log('audiochannel/dubbed = %s' % myaudiostream_dubbed_UTF8)
+                                        if myaudiostream_dubbed_UTF8 is not None:
+                                            audiostream_dubbed_int = int(myaudiostream_dubbed_UTF8)
+                                            log('audiochannel/dubbed = %s' % myaudiostream_dubbed_UTF8)
                                 # audiochannel element has no children
                                 else:
                                     # Check if the tag has content, or is empty
@@ -708,20 +738,25 @@ class BIUplayer(xbmc.Player):
                                     mysubtitlestream = video_XML.find('subtitlechannel/norm')
                                     if mysubtitlestream is not None:
                                         mysubtitlestream_UTF8 = mysubtitlestream.text
-                                        subtitlestream_int = int(mysubtitlestream_UTF8)
-                                        log('subtitlechannel = %s' % mysubtitlestream_UTF8)
+                                        if mysubtitlestream_UTF8 is not None:
+                                            subtitlestream_int = int(mysubtitlestream_UTF8)
+                                            log('subtitlechannel = %s' % mysubtitlestream_UTF8)
                                     # Get subtitlechannel/hear_imp element 
                                     mysubtitlestream_hear_imp = video_XML.find('subtitlechannel/hear_imp')
+                                    # Dit we find this element?
                                     if mysubtitlestream_hear_imp is not None:
                                         mysubtitlestream_hear_imp_UTF8 = mysubtitlestream_hear_imp.text
-                                        subtitlestream_hear_imp_int = int(mysubtitlestream_hear_imp_UTF8)
-                                        log('subtitlechannel/hear_imp = %s' % mysubtitlestream_hear_imp_UTF8)
+                                        # Is the element empty?
+                                        if mysubtitlestream_hear_imp_UTF8 is not None:
+                                            subtitlestream_hear_imp_int = int(mysubtitlestream_hear_imp_UTF8)
+                                            log('subtitlechannel/hear_imp = %s' % mysubtitlestream_hear_imp_UTF8)
                                     # Get subtitlechannel/for_lang element 
                                     mysubtitlestream_for_lang = video_XML.find('subtitlechannel/for_lang')
                                     if mysubtitlestream_for_lang is not None:
                                         mysubtitlestream_for_lang_UTF8 = mysubtitlestream_for_lang.text
-                                        subtitlestream_for_lang_int = int(mysubtitlestream_for_lang_UTF8)
-                                        log('subtitlechannel/for_lang = %s' % mysubtitlestream_for_lang_UTF8)
+                                        if mysubtitlestream_for_lang_UTF8 is not None:
+                                            subtitlestream_for_lang_int = int(mysubtitlestream_for_lang_UTF8)
+                                            log('subtitlechannel/for_lang = %s' % mysubtitlestream_for_lang_UTF8)
                                 # Mysubtitlestream element has no children
                                 else:
                                     # Check if the tag has content, or is empty
@@ -824,7 +859,25 @@ class BIUplayer(xbmc.Player):
                 # Close db
                 if sqlcon_wl:
                     sqlcon_wl.close()
+                else:
+                    log("Error getting resume info from db.")
 
+            # Check if there are external subtitles for this video.
+            # If there are external subtitles, then these will ALWAYS override the
+            # internal subtitles (user put them there for a reason, so use em!).
+            # Format:
+            # video file: videofile.strm
+            # subs file : videofile.srt
+            self.ExtSubFile = ''
+            temp_string = BIU_FileName_unicode[:-4]
+            BIU_subtitlefile_unicode = xbmc.validatePath(BIU_FolderPath_unicode + temp_string).decode("utf-8")
+            BIU_subtitlefile_unicode = xbmc.translatePath(BIU_subtitlefile_unicode).decode("utf-8")
+            log("Ext sub: base path = %s" % BIU_subtitlefile_unicode)
+            # Check if subtitle file is a .srt file.
+            if xbmcvfs.exists(BIU_subtitlefile_unicode + 'srt'):
+                self.ExtSubFile = BIU_subtitlefile_unicode + 'srt'
+                log('External subtitle file is : %s' % self.ExtSubFile)
+ 
             # Check if we have a wanted disc language.
             # And if found, get the apply the settings from the file
             # Result will be: self.audio, self.subtitle and self.show_subs will hold valid data for use in pass 2
@@ -841,39 +894,6 @@ class BIUplayer(xbmc.Player):
             log("Self.audio track = : %s" % int(self.audio))
             log("Self.subtitle track = : %s" % int(self.subtitle))
             log("Self.Show_subs = : %s" % ("true" if self.Show_subs else "false"))
-
-            # Check if there are external subtitles for this video.
-            # If there are external subtitles, then these will ALWAYS override the
-            # internal subtitles (user put them there for a reason, so use em!).
-            # Format:
-            # video file: videofile.strm
-            # subs file : videofile.ANY_TEXT.srt|ass
-            self.ExtSubFile = ''
-
-            '''
-            # Get the subtitlestream from the .xml file (if any)
-            # and put this is self.subtitle
-            self.subtitle = -1                           # Init var
-            try:
-                self.subtitle = int(mysubtitlestream)    # Will except if mysubtitlestream == None
-                log('Req subtitlestream = %s' % self.subtitle)
-                if self.subtitle == 0:
-                    log('External subtitle file wanted.')
-                    # Get the external subtitle filename.
-                    # Could be: '.srt'; ...
-                    temp_string = BIU_FileName_unicode[:-3]
-                    BIU_subtitlefile_unicode = xbmc.validatePath(BIU_FolderPath_unicode + temp_string).decode("utf-8")
-                    BIU_subtitlefile_unicode = xbmc.translatePath(BIU_subtitlefile_unicode).decode("utf-8")
-                    # Check if subtitle file is a .srt file.
-                    if xbmcvfs.exists(BIU_subtitlefile_unicode + 'srt'):
-                        self.ExtSubFile = BIU_subtitlefile_unicode + 'srt'
-                        log('Subtitlefile is : %s' % self.ExtSubFile)
-                    # No valid subtitle file found!
-                    else:
-                        self.subtitle = -1 # Use whatever default the user has
-                        raise
-            except Exception:
-                log('No valid subtitlestream specified in the .xml file!')'''
 
             # Play the correct bluray playlist
             # Fill first a listitem with the values of the .BIUfile.mp3 file. This way we get the correct mediainfo
@@ -942,8 +962,8 @@ class BIUplayer(xbmc.Player):
             # Set flag to true, doing this earlier could set a video as watched (12 sec black video ends)
             self.isPlayingBIUBluRay = True
             # Temporary 'the end' for onPlayBackStarted.
-            # Now it's waiting for the second pass, where we extract subtitle
-            # and audio info from the correct bluray playlist.
+            # Now it's waiting for the second pass, where we set subtitle
+            # and audio info for the correct bluray playlist.
 
 
 
@@ -954,16 +974,16 @@ class BIUplayer(xbmc.Player):
             log('Second pass of the service script')
 
             # Set the correct audiostream.
-            self.setAudioStream(Self.audio)
-            log('Audiostream %s set' % Self.audio)
+            self.setAudioStream(self.audio)
+            log('Audiostream %s set' % self.audio)
 
             # Set the correct subtitle stream, or none if the user wants no subtitles
             # Check if the user wants to see subs
-            if Self.Show_subs:
+            if self.Show_subs:
                 # Do we use internal subs?
                 if self.ExtSubFile == '':
                     # self.ExtSubFile = '' is empty, so use internal (to the iso) subs
-                    self.setSubtitleStream(Self.subtitle)
+                    self.setSubtitleStream(self.subtitle)
                     self.showSubtitles(True)
                     log('Internal subtitlestream %s enabled' % self.subtitle)
                 # Nope, they are external
@@ -1044,6 +1064,8 @@ class Main:
         finally:
             if sqlcon_wl:
                 sqlcon_wl.close()
+            else:
+                log("Error init db.")
 
     def _daemon(self):
 	# Needed for watched state en resumepoint
