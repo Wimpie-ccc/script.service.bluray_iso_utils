@@ -930,6 +930,7 @@ class Main:
         except Exception:
             log("Error accessing db! (Init)")
         finally:
+            log("Init - Closing DB.")
             sqlcon_wl.close()
 
 
