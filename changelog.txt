@@ -1,3 +1,6 @@
+v0.3.0 (2017-02-26)
+- Provide settings for the addon
+
 v0.2.1 (2017-02-19)
 - Fixed indentation error that manifests itself at install time
  
