@@ -1,3 +1,6 @@
+v0.2.1 (2017-02-19)
+- Fixed indentation error that manifests itself at install time
+ 
 v0.2.0 (2017-01-01)
 - Resumepoint support (using a local db)
 

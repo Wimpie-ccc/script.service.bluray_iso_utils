@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#     Copyright (C) 2013 Team-XBMC
+#     Copyright (C) 2017 Wimpie
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -59,14 +59,19 @@ class Mysettings():
         self.__init__
 
     def convertsubchoice(self, choice):
+        # Subtitles, possible result values:
+        # 0 : No (no)
+        # 1 : Yes (yes)
+        # 2 : Prefer subtitles for spoken foreign languagues (for_lang)
+        # 3 : Yes, unless original language is user language (yes_no_orig) (only with original audio)
         if choice == "0":
-            result = "yes"
+            result = "no"
         elif choice == "1":
-            result = "hear_imp"
+            result = "yes"
         elif choice == "2":
             result = "for_lang"
         else:
-            result = "no"
+            result = "yes_no_orig"
         return result
             
 
@@ -80,6 +85,15 @@ class Mysettings():
 
         # Show recap with tv-shows?
         self.show_recap = ADDON.getSetting('show_recap') == 'true'
+
+        # User languages
+        self.UserLang01 = langcodes.LanguageSelected(int(ADDON.getSetting('UserLang01')))
+        self.log_settings('User language 1 : %s' % self.UserLang01)
+        self.UserLang02 = langcodes.LanguageSelected(int(ADDON.getSetting('UserLang02')))
+        # Special case: if self.UserLang02 == "-a-" then self.UserLang02 = "---" (any comes before none in language list)
+        if self.UserLang02 == "-a-":
+            self.UserLang02 = "---"
+        self.log_settings('User language 2 : %s' % self.UserLang02)
 
         # disc languages
         self.prim_disc_lang = langcodes.LanguageSelected(int(ADDON.getSetting('DiscLang01')))
@@ -101,52 +115,54 @@ class Mysettings():
         self.log_settings('Other language: %s' % self.other_audio_lang)
 
         # Subtitles, possible result values:
-        # 0 : Yes (yes)
-        # 1 : Prefer subtitles for the deaf (hear_imp)
+        # 0 : No (no)
+        # 1 : Yes (yes)
         # 2 : Prefer subtitles for spoken foreign languagues (for_lang)
-        # 3 : No (no)
+        # 3 : Yes, unless original language is user language (yes_no_orig) (only with original audio)
         self.prim_SubDubbedLang = self.convertsubchoice(ADDON.getSetting('SubSubbedLang01'))
         self.log_settings('Subtitles when primary language is : Prefer Subbed: %s' % self.prim_SubDubbedLang)
         self.prim_SubOrigLang = self.convertsubchoice(ADDON.getSetting('SubOrigLang01'))
-        self.log_settings('Subtitles when secondary language is : Original: %s' % self.prim_SubOrigLang)
+        self.log_settings('Subtitles when primary language is : Original: %s' % self.prim_SubOrigLang)
         self.sec_SubDubbedLang = self.convertsubchoice(ADDON.getSetting('SubSubbedLang02'))
         self.log_settings('Subtitles when secondary language is : Prefer Subbed: %s' % self.sec_SubDubbedLang)
         self.sec_SubOrigLang = self.convertsubchoice(ADDON.getSetting('SubOrigLang02'))
-        self.log_settings('Subtitles when primary language is : Original: %s' % self.sec_SubOrigLang)
+        self.log_settings('Subtitles when secondary language is : Original: %s' % self.sec_SubOrigLang)
         self.other_SubDubbedLang = self.convertsubchoice(ADDON.getSetting('SubSubbedLang03'))
         self.log_settings('Subtitles when other language is : Prefer Subbed: %s' % self.other_SubDubbedLang)
         self.other_SubOrigLang = self.convertsubchoice(ADDON.getSetting('SubOrigLang03'))
         self.log_settings('Subtitles when other language is : Original: %s' % self.other_SubOrigLang)
         
-
-
-
-
-        '''# Get Kodi audio lang setting
+        # Accessibility : Use Kodi settings
+        # Prefer the audio stream for the visually impaired to other audio streams of the same language
+        self.Prefer_aud_vis_imp = False
         JSON_req = {"jsonrpc": "2.0",
                     "method": "Settings.GetSettingValue",
-                    "params": {"setting": "locale.audiolanguage"},
+                    "params": {"setting": "accessibility.audiovisual"},
                     "id": 1}
-        self.log_settings('Settings.GetSettingValue sends: %s' % JSON_req)
         JSON_result = executeJSON(JSON_req)
-        self.log_settings('JSON Settings.GetSettingValue result = %s' % JSON_result)
-        kodi_audio_lang = JSON_result["result"]["value"]
-        if ((kodi_audio_lang != "original") and (kodi_audio_lang != "default")):
-            kodi_audio_lang =xbmc.convertLanguage(kodi_audio_lang, xbmc.ISO_639_2)
-        self.log_settings('Kodi Audio Language: %s' % kodi_audio_lang)
+        self.Prefer_aud_vis_imp = JSON_result["result"]["value"]
+        self.log_settings('Prefer Audio Language for the visually impaired : %s' % ("True" if self.Prefer_aud_vis_imp else "False"))
         
-        # Get Kodi subtitle lang setting
+        # Prefer the audio stream for the hearing impaired to other audio streams of the same language
+        self.Prefer_aud_hear_imp = False
         JSON_req = {"jsonrpc": "2.0",
                     "method": "Settings.GetSettingValue",
-                    "params": {"setting": "locale.subtitlelanguage"},
+                    "params": {"setting": "accessibility.audiohearing"},
                     "id": 1}
-        self.log_settings('Settings.GetSettingValue sends: %s' % JSON_req)
         JSON_result = executeJSON(JSON_req)
-        self.log_settings('JSON Settings.GetSettingValue result = %s' % JSON_result)
-        kodi_sub_lang = JSON_result["result"]["value"]
-        if ((kodi_sub_lang != "original") and (kodi_sub_lang != "none") and (kodi_sub_lang != "forced_only") and (kodi_sub_lang != "default")):
-            kodi_sub_lang =xbmc.convertLanguage(kodi_sub_lang, xbmc.ISO_639_2)
-        self.log_settings('Kodi Subtitle Language: %s' % kodi_sub_lang)'''
+        self.Prefer_aud_hear_imp = JSON_result["result"]["value"]
+        self.log_settings('Prefer the audio stream for the hearing impaired : %s' % ("True" if self.Prefer_aud_hear_imp else "False"))
+        
+        # Prefer the subtitle stream for the hearing impaired to other subtitle streams of the same language
+        self.Prefer_sub_hear_imp = False
+        JSON_req = {"jsonrpc": "2.0",
+                    "method": "Settings.GetSettingValue",
+                    "params": {"setting": "accessibility.subhearing"},
+                    "id": 1}
+        JSON_result = executeJSON(JSON_req)
+        self.Prefer_sub_hear_imp = JSON_result["result"]["value"]
+        self.log_settings('Prefer the subtitle stream for the hearing impaired : %s' % ("True" if self.Prefer_sub_hear_imp else "False"))
+        
         
 
 
