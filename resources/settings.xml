@@ -3,11 +3,11 @@
         <setting id="enabled" label="32841" type="bool" default="true"/>
         <setting label="32855" type="lsep"/>
         <setting type="sep"/>
-        <setting id="Use_other_cut" label="32867" type="bool" default="true"/>
-        <setting id="other_cut_where" type="enum" label="32865" default="0" enable="eq(-1,true)" lvalues="32868|32869" />
+        <setting id="Use_other_cut" visible="false" label="32867" type="bool" default="true"/>
+        <setting id="other_cut_where" visible="false" type="enum" label="32865" default="0" enable="eq(-1,true)" lvalues="32868|32869" />
         <setting label="32847" type="lsep"/>
         <setting type="sep"/>
-        <setting id="Use_extended" label="32854" type="bool" default="true"/>
+        <setting id="Use_extended" visible="false" label="32854" type="bool" default="true"/>
         <setting id="show_recap" label="32848" type="bool" default="true"/>
         <setting label="32831" type="lsep"/>
         <setting type="sep"/>
@@ -30,17 +30,17 @@
         <setting id="AudioLang03" type="enum" label="32851" default="0" lvalues="32852|32853" />
         <setting label="32846" type="lsep"/>
         <setting type="sep"/>
-        <setting label="32856" type="lsep"/>
-        <setting id="SubSubbedLang01" type="enum" label="32865" default="0" lvalues="32866|32862|32864" />
         <setting label="32857" type="lsep"/>
-        <setting id="SubOrigLang01" type="enum" label="32865" default="0" lvalues="32866|32862|32864|32870" />
-        <setting label="32858" type="lsep"/>
-        <setting id="SubSubbedLang02" type="enum" label="32865" default="0" lvalues="32866|32862|32864" />
+        <setting id="SubOrigLang01" type="enum" enable="eq(-6,0)" label="32865" default="0" lvalues="32866|32862|32864|32870" />
+        <setting label="32856" type="lsep"/>
+        <setting id="SubSubbedLang01" type="enum" enable="eq(-8,1)" label="32865" default="0" lvalues="32866|32862|32864" />
         <setting label="32859" type="lsep"/>
-        <setting id="SubOrigLang02" type="enum" label="32865" default="0" lvalues="32866|32862|32864|32870" />
-        <setting label="32860" type="lsep"/>
-        <setting id="SubSubbedLang03" type="enum" label="32865" default="0" lvalues="32866|32862|328646" />
+        <setting id="SubOrigLang02" type="enum" enable="eq(-9,0)" label="32865" default="0" lvalues="32866|32862|32864|32870" />
+        <setting label="32858" type="lsep"/>
+        <setting id="SubSubbedLang02" type="enum" enable="eq(-11,1)" label="32865" default="0" lvalues="32866|32862|32864" />
         <setting label="32861" type="lsep"/>
-        <setting id="SubOrigLang03" type="enum" label="32865" default="0" lvalues="32866|32862|32864|32870" />        
+        <setting id="SubOrigLang03" type="enum" enable="eq(-12,0)" label="32865" default="0" lvalues="32866|32862|32864|32870" />        
+        <setting label="32860" type="lsep"/>
+        <setting id="SubSubbedLang03" type="enum" enable="eq(-14,1)" label="32865" default="0" lvalues="32866|32862|328646" />
     </category>
 </settings>
