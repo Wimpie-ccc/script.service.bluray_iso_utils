@@ -249,17 +249,22 @@ class BIUplayer(xbmc.Player):
         if setting_lang == "for_lang":
             log("Foreign language subs selected.")
             # We need foreign spoken language subs!
-            # Lets check if we have them
-            if sub_for_lang <> -1:
+            # Lets check if we have them, and if we need them
+            if ((sub_for_lang <> -1) and (aud_o_l == sub_l)):
                 # Yeah, we have them!
                 self.subtitle = sub_for_lang
                 Log("Spoken foreign lang sub selected!")
-            else:
+            # We don't have them, but we probably don't need them
+            elif ((sub_for_lang == -1) and (aud_o_l == sub_l)):
                 # Nope, we don't have them.
                 # We don't use normal subs because this movie probably doesn't have foreign spoken languages
                 # Don't show subtitles
                 self.Show_subs = False
                 log("Spoken foreign lang sub not found! No subs shown.")
+            else:
+                # Show normal subs if available
+                NormalSubsNeeded = True
+                log("Audio and sub language differs, fallback to normal subs.")
         # Subs for the hearing impaired needed?
         elif setting_lang == "hear_imp":
             log("Subtitles for the hearing impaired selected.")
@@ -280,13 +285,22 @@ class BIUplayer(xbmc.Player):
             # Check if we need to display the subs for this language
             # Don't show subs if audio and user language are the same
             if ((aud_o_l == self.UserLang01) or (aud_o_l == self.UserLang02)):
-                NormalSubsNeeded = False
+                self.Show_subs = False
                 log("Audio is same as userlang, no subs displayed!")
             else:
                 NormalSubsNeeded = True
                 log("Audio is not the same as userlang, subs displayed!")
         # Normal sub needed?
-        elif ((setting_lang == "yes") or NormalSubsNeeded):
+        elif (setting_lang == "yes"):
+            NormalSubsNeeded = True
+        # No subs needed
+        else:
+            # Flag for use in pass 2
+            self.Show_subs = False
+            log("User doesn't want subs for this disc language.")
+
+        # Normal subs/fallback section
+        if NormalSubsNeeded:
             log("Normal subs selected/fallback.")
             # We need subs!
             # Lets check if we have them
@@ -299,12 +313,7 @@ class BIUplayer(xbmc.Player):
                 # Don't show any subs
                 self.Show_subs = False
                 log("No normal subs found!")
-        # No subs needed
-        else:
-            # Flag for use in pass 2
-            self.Show_subs = False
-            log("User doesn't want subs for this disc language.")
-
+            
         # If there are external subs for this .mpls, then show those always
         if self.ExtSubFile <> '':
             log("External subs present.")
@@ -332,7 +341,7 @@ class BIUplayer(xbmc.Player):
         # "orig" or "dubbed" ?
         # Audio language is "dubbed"
         # setting_disclang = eg settings.prim_audio_lang
-        if setting_disclang == "dubbed":
+        if ((setting_disclang == "dubbed") and (aud_dubbed != -1)):
             log("Audio is dubbed.")
             # Need accessibility features?
             # Audio stream for the visually impaired
@@ -393,7 +402,7 @@ class BIUplayer(xbmc.Player):
             # Get the correct subs
             self.SetSubs(setting_discorig, sub_forn, sub_hear, sub_nor, aud_orig_l, sub_l)
 
-    def Get_nfo_set(self, nfo_xml, BIU_file):
+    def Get_nfo_set(self, nfo_xml, BIU_file, extras_subdir):
         # for every video node in this disc
         # Init
         backpathiso_UTF8 = None
@@ -403,8 +412,20 @@ class BIUplayer(xbmc.Player):
             for video_XML in lang_XML:
                 if video_XML.tag == "video":
                     log('Videofile = %s' % (video_XML.attrib['filename']))
+                    # Get the subdir attrib
+                    # Init to true
+                    match_subdir = True
+                    # Check if subdir attrib exists in this video tag
+                    if 'subdir' in video_XML.attrib:
+                        log("Video tag has a subdir attribute!")
+                        myvideo_attrib_UTF8 = video_XML.attrib['subdir']
+                        # subdir attrib exists, lets check if it matches
+                        if myvideo_attrib_UTF8 is not None:
+                            if myvideo_attrib_UTF8 != extras_subdir:
+                                match_subdir = False
+                                log('Extras subdir does not match.')
                     # check if the filename attrib contains the correct filename
-                    if (video_XML.attrib['filename'] == BIU_file): 
+                    if ((video_XML.attrib['filename'] == BIU_file) and (match_subdir)): 
                         log('Videofile and xml record match.')                      # if yes: We have a winner!!!
                         # Playlist number
                         myplaylistnumber = video_XML.find('playlist')
@@ -885,11 +906,27 @@ class BIUplayer(xbmc.Player):
             # First validatepath to get the slashes OK,
             # then translatepath to get all the paths working.
             BIU_FolderPath_unicode = xbmc.validatePath(BIU_FolderPath_unicode).decode("utf-8")
+            log("filename = %s" % BIU_FileName_unicode)
+            log("extras1-folderpath = %s" % BIU_FolderPath_unicode)
+            # Init
+            BIU_extras_subdir = ""
             # Cut of the extras dir if we are viewing extras
             s_index = BIU_FolderPath_unicode.rfind(u"Extras\\")
             # rfind found a match
             if s_index != -1:
+                # Check if this extras video sits in the extras root dir
+                log(len(BIU_FolderPath_unicode))
+                log(s_index + len(u"Extras\\"))
+                if s_index + len(u"Extras\\") == len(BIU_FolderPath_unicode):
+                    log("1")
+                else:
+                    log("2")
+                    tt = s_index + len(u"Extras\\")
+                    BIU_extras_subdir = BIU_FolderPath_unicode[tt:len(BIU_FolderPath_unicode)-1]
+                    log("BIU_extras_subdir = %s" % BIU_extras_subdir)
                 BIU_FolderPath_unicode = BIU_FolderPath_unicode[0:s_index]
+                log("extras2-folderpath = %s" % BIU_FolderPath_unicode)
+                    
             # Construct the BIUinfo.xml location
             BIU_file_unicode = xbmc.validatePath(BIU_FolderPath_unicode + '.BIUfiles/BIUinfo.xml').decode("utf-8")
             BIU_file_unicode = xbmc.translatePath(BIU_file_unicode).decode("utf-8")
@@ -915,12 +952,6 @@ class BIUplayer(xbmc.Player):
                     # Bad .xml file, we need a isofile.
                     self.BIU_ExitHandler('No valid isofile in the XML!! Aborting')
                     return
-                    
-
-        # starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int,
-        # audiostream_dubbed_lang, subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int,
-        # myplaylistnumber_UTF8, subtitlestream_lang, audiostream_orig_desc_int, audiostream_dubbed_desc_int,
-        # audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int
 
                 # Find best disclanguage
                 self.DiscLanguage = ""
@@ -934,7 +965,7 @@ class BIUplayer(xbmc.Player):
                         starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
                         subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
                         audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
-                        = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode)
+                        = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
                         
                 # Secundary language
                 # Search only if no primary language found
@@ -948,7 +979,7 @@ class BIUplayer(xbmc.Player):
                             starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
                             subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
                             audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
-                            = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode)
+                            = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
                         
                 # Other language
                 # Search only if no primary or secundary language found
@@ -962,7 +993,7 @@ class BIUplayer(xbmc.Player):
                             starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
                             subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
                             audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
-                            = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode)
+                            = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
                         
                 # Any language
                 # Search only if no primary, secundary or other language found
@@ -972,7 +1003,7 @@ class BIUplayer(xbmc.Player):
                     starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, subtitlestream_int, \
                     subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, audiostream_orig_desc_int, \
                     audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
-                    = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode)
+                    = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
 
             # The base path is "BIU_Path_unicode". Normally the user would place the iso file
             # in a subdirectory of the base path. However, with the following code section it is also
