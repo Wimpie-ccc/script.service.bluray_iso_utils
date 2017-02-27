@@ -194,24 +194,26 @@ class BIUplayer(xbmc.Player):
                
         # if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
         # No stream details in the Kodi library, add them now
-            
+        jsonmethod = ""
         if Global_BIU_vars["Video_Type"] == 'movie':
             jsonmethod = "VideoLibrary.SetMovieDetails"; idfieldname = "movieid"
         elif Global_BIU_vars["Video_Type"] == 'episode':
             jsonmethod = "VideoLibrary.SetEpisodeDetails"; idfieldname = "episodeid"
 
-        # Update the Kodi library through JSON
-        JSON_req = {"jsonrpc": "2.0",
-                    "method": jsonmethod,
-                    "params": {idfieldname: Global_BIU_vars["Video_ID"],
-                               "lastplayed": utils.TimeStamptosqlDateTime(int(time.time())),
-                               "playcount": Global_BIU_vars["PlayCount"]},
-                    "id": 1}
-        JSON_result = utils.executeJSON(JSON_req)
-        if (JSON_result.has_key('result') and JSON_result['result'] == 'OK'):
-            log('Updated Kodi DB with new lastplayed and playcount!')
-        else:
-            log('Error updating Kodi DB with new lastplayed and playcount!')
+        # Only do this if it is a movie or episode, extras don't need this
+        if jsonmethod != "":
+            # Update the Kodi library through JSON
+            JSON_req = {"jsonrpc": "2.0",
+                        "method": jsonmethod,
+                        "params": {idfieldname: Global_BIU_vars["Video_ID"],
+                                   "lastplayed": utils.TimeStamptosqlDateTime(int(time.time())),
+                                   "playcount": Global_BIU_vars["PlayCount"]},
+                        "id": 1}
+            JSON_result = utils.executeJSON(JSON_req)
+            if (JSON_result.has_key('result') and JSON_result['result'] == 'OK'):
+                log('Updated Kodi DB with new lastplayed and playcount!')
+            else:
+                log('Error updating Kodi DB with new lastplayed and playcount!')
 	
     # This event handler gets called when the video is played all the way to the end.
     # Check here if we need to set the watched flag for this video.
@@ -279,7 +281,7 @@ class BIUplayer(xbmc.Player):
                 # I assume this is better than no subs, for the hearing impaired
                 NormalSubsNeeded = True
                 log("No subs for the hearing impaired found! Fallback to normal subs.")
-        # Normal sub needed if not user language
+        # Normal subs needed if not user language
         elif setting_lang == "yes_no_orig":
             log("Subtitles if no user language selected.")
             # Check if we need to display the subs for this language
@@ -424,6 +426,16 @@ class BIUplayer(xbmc.Player):
                             if myvideo_attrib_UTF8 != extras_subdir:
                                 match_subdir = False
                                 log('Extras subdir does not match.')
+                    # Check for the "NYI" (Not Yet Implemented) video_type
+                    # If we find it then we can't process this video. Kodi doesn't know what to do with it.
+                    if 'video_type' in video_XML.attrib:
+                        myvideo_attrib_UTF8 = video_XML.attrib['video_type']
+                        if myvideo_attrib_UTF8 is not None:
+                            if myvideo_attrib_UTF8 == 'NYI':
+                                # Abuse match_subdir as flag
+                                # If this flag is flase then this video element isn't processed
+                                match_subdir = False
+                                log('This video element has a NYI video_type. Skipping!')
                     # check if the filename attrib contains the correct filename
                     if ((video_XML.attrib['filename'] == BIU_file) and (match_subdir)): 
                         log('Videofile and xml record match.')                      # if yes: We have a winner!!!
