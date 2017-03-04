@@ -190,16 +190,15 @@ class BIUplayer(xbmc.Player):
             else:
                 log("Error setting resume info from db.")
 
-        
-               
         # if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
         # No stream details in the Kodi library, add them now
+
+        # Update Kodi library with new playcount and lastplayed
         jsonmethod = ""
         if Global_BIU_vars["Video_Type"] == 'movie':
             jsonmethod = "VideoLibrary.SetMovieDetails"; idfieldname = "movieid"
         elif Global_BIU_vars["Video_Type"] == 'episode':
             jsonmethod = "VideoLibrary.SetEpisodeDetails"; idfieldname = "episodeid"
-
         # Only do this if it is a movie or episode, extras don't need this
         if jsonmethod != "":
             # Update the Kodi library through JSON
@@ -416,7 +415,7 @@ class BIUplayer(xbmc.Player):
                     log('Videofile = %s' % (video_XML.attrib['filename']))
                     # Get the subdir attrib
                     # Init to true
-                    match_subdir = True
+                    match_video = True
                     # Check if subdir attrib exists in this video tag
                     if 'subdir' in video_XML.attrib:
                         log("Video tag has a subdir attribute!")
@@ -424,7 +423,7 @@ class BIUplayer(xbmc.Player):
                         # subdir attrib exists, lets check if it matches
                         if myvideo_attrib_UTF8 is not None:
                             if myvideo_attrib_UTF8 != extras_subdir:
-                                match_subdir = False
+                                match_video = False
                                 log('Extras subdir does not match.')
                     # Check for the "NYI" (Not Yet Implemented) video_type
                     # If we find it then we can't process this video. Kodi doesn't know what to do with it.
@@ -432,12 +431,11 @@ class BIUplayer(xbmc.Player):
                         myvideo_attrib_UTF8 = video_XML.attrib['video_type']
                         if myvideo_attrib_UTF8 is not None:
                             if myvideo_attrib_UTF8 == 'NYI':
-                                # Abuse match_subdir as flag
-                                # If this flag is flase then this video element isn't processed
-                                match_subdir = False
+                                # If this flag is false then this video element isn't processed
+                                match_video = False
                                 log('This video element has a NYI video_type. Skipping!')
-                    # check if the filename attrib contains the correct filename
-                    if ((video_XML.attrib['filename'] == BIU_file) and (match_subdir)): 
+                    # Check if the filename attrib contains the correct filename
+                    if ((video_XML.attrib['filename'] == BIU_file) and (match_video)): 
                         log('Videofile and xml record match.')                      # if yes: We have a winner!!!
                         # Playlist number
                         myplaylistnumber = video_XML.find('playlist')
@@ -451,7 +449,7 @@ class BIUplayer(xbmc.Player):
                                 return
                         # Starttime
                         st_p_r = 0    # Init
-                        st_i = 0               # Init
+                        st_i = 0      # Init
                         mystarttime = video_XML.find('starttime')
                         if mystarttime is not None:
                             # Starttime element has children
@@ -472,7 +470,7 @@ class BIUplayer(xbmc.Player):
                                         st_p_r = self.ConvertTimeToSecs(mystarttime_plus_recap_UTF8, "start")
                                         log('Starttime (plus_recap) = %s' % mystarttime_plus_recap_UTF8)
                             # Starttime element has no children,
-                            # but contains a valid (?) value
+                            # But contains a valid (?) value
                             else:
                                 # Check if the tag has content, or is empty
                                 mystarttime_UTF8 = mystarttime.text
@@ -508,7 +506,7 @@ class BIUplayer(xbmc.Player):
                         au_dh_i = -1 # audiostream_dubbed_hear_imp_int
                         myaudiostream = video_XML.find('audiochannel')
                         if myaudiostream is not None:
-                            # audiochannel element has children
+                            # Audiochannel element has children
                             if len(myaudiostream) <> 0:
                                 log('audiochannel has %s children' % len(myaudiostream))
                                 # Get audiochannel/original element (= audiochannel)
@@ -586,7 +584,7 @@ class BIUplayer(xbmc.Player):
                                         if myaudiostream_dubbed_UTF8 is not None:
                                             au_o_i = int(myaudiostream_dubbed_UTF8)
                                             log('audiochannel/dubbed = %s' % myaudiostream_dubbed_UTF8)
-                            # audiochannel element has no children
+                            # Audiochannel element has no children
                             else:
                                 # Check if the tag has content, or is empty
                                 myaudiostream_UTF8 = myaudiostream.text
@@ -622,7 +620,7 @@ class BIUplayer(xbmc.Player):
                                         log('subtitlechannel = %s' % mysubtitlestream_UTF8)
                                 # Get subtitlechannel/hear_imp element 
                                 mysubtitlestream_hear_imp = video_XML.find('subtitlechannel/hear_imp')
-                                # Dit we find this element?
+                                # Did we find this element?
                                 if mysubtitlestream_hear_imp is not None:
                                     mysubtitlestream_hear_imp_UTF8 = mysubtitlestream_hear_imp.text
                                     # Is the element empty?
@@ -887,6 +885,7 @@ class BIUplayer(xbmc.Player):
                     
             except Exception:
                 # We get here if we start the video from "Videos"
+                # Or if we play a non-movie/episode video (eg extras)
                 log('Error getting JSON response, media is unknown!! Video probably started from Videos.')
                 Global_video_dict["BIU_Art_Thumb_unicode"] = ""
                 Global_video_dict["BIU_Art_Poster_unicode"] = ""
@@ -918,29 +917,23 @@ class BIUplayer(xbmc.Player):
             # First validatepath to get the slashes OK,
             # then translatepath to get all the paths working.
             BIU_FolderPath_unicode = xbmc.validatePath(BIU_FolderPath_unicode).decode("utf-8")
-            log("filename = %s" % BIU_FileName_unicode)
-            log("extras1-folderpath = %s" % BIU_FolderPath_unicode)
             # Init
             BIU_extras_subdir = ""
             # Cut of the extras dir if we are viewing extras
             s_index = BIU_FolderPath_unicode.rfind(u"Extras\\")
-            # rfind found a match
+            # rfind found a match, we are watching extras
             if s_index != -1:
                 # Check if this extras video sits in the extras root dir
-                log(len(BIU_FolderPath_unicode))
-                log(s_index + len(u"Extras\\"))
-                if s_index + len(u"Extras\\") == len(BIU_FolderPath_unicode):
-                    log("1")
-                else:
-                    log("2")
+                if s_index + len(u"Extras\\") != len(BIU_FolderPath_unicode):
                     tt = s_index + len(u"Extras\\")
+                    # Get the extras subdir
                     BIU_extras_subdir = BIU_FolderPath_unicode[tt:len(BIU_FolderPath_unicode)-1]
                     log("BIU_extras_subdir = %s" % BIU_extras_subdir)
                 BIU_FolderPath_unicode = BIU_FolderPath_unicode[0:s_index]
-                log("extras2-folderpath = %s" % BIU_FolderPath_unicode)
+                log("BIU_FolderPath_unicode = %s" % BIU_FolderPath_unicode)
                     
             # Construct the BIUinfo.xml location
-            BIU_file_unicode = xbmc.validatePath(BIU_FolderPath_unicode + '.BIUfiles/BIUinfo.xml').decode("utf-8")
+            BIU_file_unicode = xbmc.validatePath(BIU_FolderPath_unicode + 'BIUfiles/BIUinfo.xml').decode("utf-8")
             BIU_file_unicode = xbmc.translatePath(BIU_file_unicode).decode("utf-8")
             log('BIUfile.xml = %s ' % BIU_file_unicode)
 
@@ -954,7 +947,7 @@ class BIUplayer(xbmc.Player):
                 return
 
             # Extract all settings from the BIUfile.xml file.
-            for discdetails_XML in directorydetails_XML:                        # for every disc
+            for discdetails_XML in directorydetails_XML:    # for every disc
                 # Location of the iso file
                 backpathiso = discdetails_XML.find('isofile')
                 if backpathiso is not None:
@@ -1024,7 +1017,10 @@ class BIUplayer(xbmc.Player):
             backpathdir_unicode = BIU_FolderPath_unicode
             log("BIU_Backpathdir = %s" % backpathdir_unicode)
             if backpathiso_UTF8 != None:
-                backpathiso_unicode = backpathiso_UTF8.decode("utf-8")
+                # Pffff!! I don't understand why this fails
+                #backpathiso_unicode = backpathiso_UTF8.decode('utf-8')
+                # and why this works...
+                backpathiso_unicode = backpathiso_UTF8
             else:
                 self.BIU_ExitHandler('Backpathiso_UTF8 is empty.')
                 return
@@ -1068,9 +1064,10 @@ class BIUplayer(xbmc.Player):
             # Aaargh!!! urllib.quote does not work with unicode strings!! Great!!!
             # Encode first to UTF-8. Luckely UTF-8 works...
             myescapedisofile_UTF8 = myisofile_unicode.encode("utf-8")
-            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='!')
+            # see: http://stackoverflow.com/questions/22415345/using-pythons-urllib-quote-plus-on-utf-8-strings-with-safe-arguments
+            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='()!'.encode("utf-8"))
             myescapedisofile_UTF8 = 'udf://' + myescapedisofile_UTF8 + '/'
-            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='()!')
+            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='()!'.encode("utf-8"))
             myescapedisofile_UTF8 = 'bluray://' + myescapedisofile_UTF8 + '/BDMV/PLAYLIST/' + myplaylistnumber_UTF8 + '.mpls'
             log("Myescapedisofile_UTF8 = %s" % myescapedisofile_UTF8)
 
@@ -1162,14 +1159,15 @@ class BIUplayer(xbmc.Player):
             log("Self.Show_subs = : %s" % ("true" if self.Show_subs else "false"))
 
             # Play the correct bluray playlist
-            # Fill first a listitem with the values of the .BIUfile.mp3 file. This way we get the correct mediainfo
+            # Fill first a listitem with the values of the .BIUfile.mp3/.strm file. This way we get the correct mediainfo
             # while playing our bluray playlist. Otherwise this is empty (thumb picture) or 00800.mpls as name...
             # Could be that we need to copy more later, other skins might want to display other listitems.infolabels
-            mylistitems = xbmcgui.ListItem (Global_video_dict["BIU_Title_unicode"])
+            mylistitems = xbmcgui.ListItem(Global_video_dict["BIU_Title_unicode"])
             mylistitems.setArt({'thumb': Global_video_dict["BIU_Art_Thumb_unicode"]})
             mylistitems.setArt({'poster': Global_video_dict["BIU_Art_Poster_unicode"]})
             # Add the resumetime to the starttime
             startplayingfrom = Global_BIU_vars["Start_time"] + Global_BIU_vars["Resume_Time"]
+            log("Start playing from is : %s" % startplayingfrom)
             # If startplayingfrom <> 0 then start the video with the correct starttime (StartOffset).
             if startplayingfrom != 0:
                 mylistitems.setProperty('StartOffset', str(startplayingfrom))  # Is better alternative to 'start and then seek'
@@ -1236,7 +1234,7 @@ class BIUplayer(xbmc.Player):
         # Here we have the second pass of our service.
         # We detect this by looking at the filename of the current playing file.
         # If it includes ".BIUfiles" then we have a hit.
-        if (self.isPlayingBIUBluRay and ('.BIUfiles' in Nowplaying)):
+        if (self.isPlayingBIUBluRay and ('BIUfiles' in Nowplaying)):
             log('Second pass of the service script')
 
             # Set the correct audiostream.
@@ -1269,12 +1267,6 @@ class BIUplayer(xbmc.Player):
                 # Duration is from video duration
                 Global_BIU_vars["Duration"] = self.getTotalTime() - Global_BIU_vars["Start_time"]
             log('Video duration = %s' % str(Global_BIU_vars["Duration"]))
-
-            '''
-            # Set all streamdetails so we can save
-            if Global_BIU_vars["Update_Streamdetails"] == True:
-                pass
-            '''
 
 
 # Main loop 
