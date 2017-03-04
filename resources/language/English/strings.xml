@@ -12,7 +12,114 @@
   <!-- Script Settings -->
 
   	<string id="32830">General</string> 
-	<string id="32841">Enable Bluray iso utils service?</string>
-	<string id="32842">Enable Debug logging?</string>
-	    
+    <string id="32831">Debug</string>
+    <string id="32832">Language</string>
+	<string id="32833">Playback</string>
+    <string id="32841">Enable bluray iso utils service?</string>
+	<string id="32842">Enable debug logging?</string>
+    <string id="32843">Do you want this video to resume from %s ?</string>
+	<string id="32844">Preferred disc language</string>
+    <string id="32845">Audio for this disc language</string>
+    <string id="32846">Subtitles for this disc language</string>
+    <string id="32847">TV shows</string>
+    <string id="32848">Play "Previously on ..."</string>
+    <string id="32849">Primary language</string>
+    <string id="32850">Secondary language</string>
+    <string id="32851">Other language</string>  
+    <string id="32852">Original</string>  
+    <string id="32853">Prefer dubbed</string>  
+    <string id="32854">Use extended cut if available</string>  
+    <string id="32855">Movies</string>  
+    <string id="32856">Show subtitles when primary language is : Prefer Dubbed</string>  
+    <string id="32857">Show subtitles when primary language is : Original</string>  
+    <string id="32858">Show subtitles when secondary language is : Prefer Dubbed</string>  
+    <string id="32859">Show subtitles when secondary language is : Original</string>  
+    <string id="32860">Show subtitles when other language is : Prefer Dubbed</string>  
+    <string id="32861">Show subtitles when other language is : Original</string>  
+    <string id="32862">Yes</string>  
+    <string id="32863"></string>  
+    <string id="32864">Prefer subtitles for spoken foreign languages</string>  
+    <string id="32865"></string>
+    <string id="32866">No</string>
+    <string id="32867">Use other cut if available</string>  
+    <string id="32868">In own directory (Create new directory)</string>
+    <string id="32869">In this directory</string>
+    <string id="32870">Yes, unless original language is user language</string>
+    <string id="32871">Original user languages</string>
+    <string id="32872">Language 1</string>
+    <string id="32873">Language 2</string>
+    <string id="32874"></string>
+    <string id="32875"></string>
+    <string id="32876"></string>
+    <string id="32877"></string>
+    <string id="32878"></string>
+    <string id="32879"></string>
+   
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    <!-- Languages  -->
+    <string id="32901">Albanian</string>
+    <string id="32902">Arabic</string>
+    <string id="32903">Armenian</string>
+    <string id="32904">Basque</string>
+    <string id="32905">Belarusian</string>
+    <string id="32906">Bosnian</string>
+    <string id="32907">Bulgarian</string>
+    <string id="32908">Catalan</string>
+    <string id="32909">Chinese</string>
+    <string id="32910">Croatian</string>
+    <string id="32911">Czech</string>
+    <string id="32912">Danish</string>
+    <string id="32913">Dutch</string>
+    <string id="32914">Dutch (Flemish)</string>
+    <string id="32915">English</string>
+    <string id="32916">Estonian</string>
+    <string id="32917">Farsi</string>
+    <string id="32918">Finnish</string>
+    <string id="32919">French</string>
+    <string id="32920">German</string>
+    <string id="32921">German (Austrian)</string>
+    <string id="32922">German (Swiss)</string>
+    <string id="32923">Greek</string>
+    <string id="32924">Hebrew</string>
+    <string id="32925">Hindi</string>
+    <string id="32926">Hungarian</string>
+    <string id="32927">Icelandic</string>
+    <string id="32928">Indonesian</string>
+    <string id="32929">Italian</string>
+    <string id="32930">Japanese</string>
+    <string id="32931">Korean</string>
+    <string id="32932">Latvian</string>
+    <string id="32933">Lithuanian</string>
+    <string id="32934">Macedonian</string>
+    <string id="32935">Malay</string>
+    <string id="32936">Norwegian</string>
+    <string id="32937">Polish</string>
+    <string id="32938">Portuguese</string>
+    <string id="32939">Portuguese (Brazilian)</string>
+    <string id="32940">Romanian</string>
+    <string id="32941">Russian</string>
+    <string id="32942">Serbian</string>
+    <string id="32943">Slovak</string>
+    <string id="32944">Slovenian</string>
+    <string id="32945">Spanish</string>
+    <string id="32946">Spanish (Latin America)</string>
+    <string id="32947">Swedish</string>
+    <string id="32948">Tagalog</string>
+    <string id="32949">Thai</string>
+    <string id="32950">Turkish</string>
+    <string id="32951">Ukrainian</string>
+    <string id="32952">Vietnamese</string>
+    <string id="32953">Any</string>
+    <string id="32954">None</string>
 </strings>

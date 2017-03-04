@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#     Copyright (C) 2016 Wimpie
+#     Copyright (C) 2017 Wimpie
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -68,14 +68,11 @@ class BIUmonitor(xbmc.Monitor):
         xbmc.Monitor.__init__(self)
         # Init settings
         settings.init()
-        settings.readSettings()
-        
 
     # This is the function that signals that the user just changed a setting.
     # First default settings will be loaded, then we read the user-defined settings and
     # overwrite these default settings if needed.   
     def onSettingsChanged(self):
-        settings.init()
         settings.readSettings()
 
 # Our player class
@@ -84,19 +81,29 @@ class BIUplayer(xbmc.Player):
         xbmc.Player.__init__(self)
         # Here comes some variables that need to get from the first to the second pass,
         # but are not needed outside the player class
-        self.reqaudio = -1
-        self.reqsubtitle = -1
+        self.audio = -1
+        self.subtitle = -1
+        self.Show_subs = True
         self.isPlayingBIUBluRay = False     # Flag that indicates if we are (or just have) playing a BIUfile type video
         self.ExtSubFile = ''
+        self.DiscLanguage = ""
         self.dbPath = os.path.join(ADDONPROFILE, "BIU.db")
 
     # Convert the seektime in the filename (format: uu_mm_ss) to seconds.
     # result = (3600 * uu) + (60 * mm) + ss
-    def ConvertTimeToSecs(self, file_time):
-        hours = int(file_time[0:2])
-        mins = int(file_time[3:5])
-        secs = int(file_time[6:])
-        result_int = (3600 * hours) + (60 * mins) + secs
+    def ConvertTimeToSecs(self, file_time, time_type):
+        try:
+            hours = int(file_time[0:2])
+            mins = int(file_time[3:5])
+            secs = int(file_time[6:])
+            result_int = (3600 * hours) + (60 * mins) + secs
+        except Exception:
+            if time_type == "start":
+                log('Error converting time to secs. Using 0 sec instead.')
+                result_int = 0
+            elif time_type == "stop":
+                log('Error converting time to secs. Using 9999999 sec instead.')
+                result_int = Global_BIU_vars["Default_stop_time"]
         return result_int
 
     # Convert the secs time to normal hh:mm:ss time
@@ -173,33 +180,39 @@ class BIUplayer(xbmc.Player):
             sqlcon_wl.commit()
             
         except Exception:
-            log('Error accessing db! (Saving resume point)')
-
+            self.BIU_ExitHandler('Error accessing db! (Saving resume point)')
+            return
+        
         finally:
             # Close db
-            sqlcon_wl.close()
-        
-               
+            if sqlcon_wl:
+                sqlcon_wl.close()
+            else:
+                log("Error setting resume info from db.")
+
         # if Global_video_dict["BIU_StreamDetails_unicode"]["video"] == []:
         # No stream details in the Kodi library, add them now
-            
+
+        # Update Kodi library with new playcount and lastplayed
+        jsonmethod = ""
         if Global_BIU_vars["Video_Type"] == 'movie':
             jsonmethod = "VideoLibrary.SetMovieDetails"; idfieldname = "movieid"
         elif Global_BIU_vars["Video_Type"] == 'episode':
             jsonmethod = "VideoLibrary.SetEpisodeDetails"; idfieldname = "episodeid"
-
-        # Update the Kodi library through JSON
-        JSON_req = {"jsonrpc": "2.0",
-                    "method": jsonmethod,
-                    "params": {idfieldname: Global_BIU_vars["Video_ID"],
-                               "lastplayed": utils.TimeStamptosqlDateTime(int(time.time())),
-                               "playcount": Global_BIU_vars["PlayCount"]},
-                    "id": 1}
-        JSON_result = utils.executeJSON(JSON_req)
-        if (JSON_result.has_key('result') and JSON_result['result'] == 'OK'):
-            log('Updated Kodi DB with new lastplayed and playcount!')
-        else:
-            log('Error updating Kodi DB with new lastplayed and playcount!')
+        # Only do this if it is a movie or episode, extras don't need this
+        if jsonmethod != "":
+            # Update the Kodi library through JSON
+            JSON_req = {"jsonrpc": "2.0",
+                        "method": jsonmethod,
+                        "params": {idfieldname: Global_BIU_vars["Video_ID"],
+                                   "lastplayed": utils.TimeStamptosqlDateTime(int(time.time())),
+                                   "playcount": Global_BIU_vars["PlayCount"]},
+                        "id": 1}
+            JSON_result = utils.executeJSON(JSON_req)
+            if (JSON_result.has_key('result') and JSON_result['result'] == 'OK'):
+                log('Updated Kodi DB with new lastplayed and playcount!')
+            else:
+                log('Error updating Kodi DB with new lastplayed and playcount!')
 	
     # This event handler gets called when the video is played all the way to the end.
     # Check here if we need to set the watched flag for this video.
@@ -223,10 +236,432 @@ class BIUplayer(xbmc.Player):
             # Set flag to False
             self.isPlayingBIUBluRay = False
 
+    # eg: SetSubs(self.prim_SubOrigLang, subtitlestream_for_lang_int, subtitlestream_hear_imp_int, subtitlestream_int, audiostream_orig_lang, subtitlestream_lang)
+    def SetSubs(self, setting_lang, sub_for_lang, sub_hear_imp, sub_norm, aud_o_l, sub_l):
+        log("SetSubs : subtitlestream_for_lang_int = %s" % sub_for_lang)
+        log("SetSubs : subtitlestream_hear_imp_int = %s" % sub_hear_imp)
+        log("SetSubs : subtitlestream_int = %s" % sub_norm)
+        log("SetSubs : setting_lang = %s" % setting_lang)
+
+        # Init
+        NormalSubsNeeded = False
+        
+        # Subs for foreign spoken languages needed?
+        if setting_lang == "for_lang":
+            log("Foreign language subs selected.")
+            # We need foreign spoken language subs!
+            # Lets check if we have them, and if we need them
+            if ((sub_for_lang <> -1) and (aud_o_l == sub_l)):
+                # Yeah, we have them!
+                self.subtitle = sub_for_lang
+                Log("Spoken foreign lang sub selected!")
+            # We don't have them, but we probably don't need them
+            elif ((sub_for_lang == -1) and (aud_o_l == sub_l)):
+                # Nope, we don't have them.
+                # We don't use normal subs because this movie probably doesn't have foreign spoken languages
+                # Don't show subtitles
+                self.Show_subs = False
+                log("Spoken foreign lang sub not found! No subs shown.")
+            else:
+                # Show normal subs if available
+                NormalSubsNeeded = True
+                log("Audio and sub language differs, fallback to normal subs.")
+        # Subs for the hearing impaired needed?
+        elif setting_lang == "hear_imp":
+            log("Subtitles for the hearing impaired selected.")
+            # We need subs for the hearing impaired!
+            # Lets check if we have them
+            if sub_hear_imp <> -1:
+                # Yeah, we have them!
+                self.subtitle = sub_hear_imp
+                log("Subs for the hearing impaired found and selected!")
+            else:
+                # Nope, we don't have them. Use normal subs instead.
+                # I assume this is better than no subs, for the hearing impaired
+                NormalSubsNeeded = True
+                log("No subs for the hearing impaired found! Fallback to normal subs.")
+        # Normal subs needed if not user language
+        elif setting_lang == "yes_no_orig":
+            log("Subtitles if no user language selected.")
+            # Check if we need to display the subs for this language
+            # Don't show subs if audio and user language are the same
+            if ((aud_o_l == self.UserLang01) or (aud_o_l == self.UserLang02)):
+                self.Show_subs = False
+                log("Audio is same as userlang, no subs displayed!")
+            else:
+                NormalSubsNeeded = True
+                log("Audio is not the same as userlang, subs displayed!")
+        # Normal sub needed?
+        elif (setting_lang == "yes"):
+            NormalSubsNeeded = True
+        # No subs needed
+        else:
+            # Flag for use in pass 2
+            self.Show_subs = False
+            log("User doesn't want subs for this disc language.")
+
+        # Normal subs/fallback section
+        if NormalSubsNeeded:
+            log("Normal subs selected/fallback.")
+            # We need subs!
+            # Lets check if we have them
+            if sub_norm <> -1:
+                # Yeah, we have them!
+                self.subtitle = sub_norm
+                log("User wants to see the normal subs.")
+            else:
+                # No normal subs on this disc for this disc language
+                # Don't show any subs
+                self.Show_subs = False
+                log("No normal subs found!")
+            
+        # If there are external subs for this .mpls, then show those always
+        if self.ExtSubFile <> '':
+            log("External subs present.")
+            self.Show_subs = True
+        
+    # SetDiscAudSub(settings.prim_audio_lang, self.prim_SubDubbedLang, self.prim_SubOrigLang, starttime_plus_recap_int, starttime_int, audiostream_dubbed_int, audiostream_orig_int,
+    #               subtitlestream_for_lang_int, subtitlestream_hear_imp_int, subtitlestream_int, audiostream_orig_lang, audiostream_dubbed_lang, subtitlestream_lang,
+    #               audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int)
+    def SetDiscAudSub(self, setting_disclang, setting_discsub, setting_discorig, time_recap, time_norm, aud_dubbed, aud_orig, sub_forn, sub_hear, sub_nor, aud_orig_l, aud_dubbed_l, \
+                      sub_l, aud_orig_desc, aud_dubbed_desc, aud_orig_hear, aud_dubbed_hear):
+        # Starttime
+        # Do we need to show the recap?
+        if settings.show_recap:
+            Global_BIU_vars["Start_time"] = time_recap
+            log("Show recap")
+        # Or does the user not want to see the recap?
+        else:
+            Global_BIU_vars["Start_time"] = time_norm
+            log("Show normal, without recap")
+
+        # Init
+        self.subtitle = -1
+        self.Show_subs = True
+
+        # "orig" or "dubbed" ?
+        # Audio language is "dubbed"
+        # setting_disclang = eg settings.prim_audio_lang
+        if ((setting_disclang == "dubbed") and (aud_dubbed != -1)):
+            log("Audio is dubbed.")
+            # Need accessibility features?
+            # Audio stream for the visually impaired
+            if settings.Prefer_aud_vis_imp:
+                # Check if the disc has such a stream
+                if aud_dubbed_desc != -1:
+                    # Yes, we have such a stream, use it
+                    self.audio = aud_dubbed_desc
+                else:
+                    # Nope, we don't have such a stream
+                    # Fall back to the normal audio stream
+                    self.audio = aud_dubbed
+            # Audio stream for the hearing impaired
+            elif settings.Prefer_aud_hear_imp:
+                # Check if the disc has such a stream
+                if aud_dubbed_hear != -1:
+                    # Yes, we have such a stream, use it
+                    self.audio = aud_dubbed_hear
+                else:
+                    # Nope, we don't have such a stream
+                    # Fall back to the normal audio stream
+                    self.audio = aud_dubbed                
+            # No special audiostream is needed
+            else:
+                self.audio = aud_dubbed
+
+            # Get the correct subs
+            self.SetSubs(setting_discsub, sub_forn, sub_hear, sub_nor, aud_dubbed_l, sub_l)
+
+        # Audio language is original
+        else:
+            log("Audio is orig.")
+            # Need accessibility features?
+            # Audio stream for the visually impaired
+            if settings.Prefer_aud_vis_imp:
+                # Check if the disc has such a stream
+                if aud_orig_desc != -1:
+                    # Yes, we have such a stream, use it
+                    self.audio = aud_orig_desc
+                else:
+                    # Nope, we don't have such a stream
+                    # Fall back to the normal audio stream
+                    self.audio = aud_orig
+            # Audio stream for the hearing impaired
+            elif settings.Prefer_aud_hear_imp:
+                # Check if the disc has such a stream
+                if aud_orig_hear != -1:
+                    # Yes, we have such a stream, use it
+                    self.audio = aud_orig_hear
+                else:
+                    # Nope, we don't have such a stream
+                    # Fall back to the normal audio stream
+                    self.audio = aud_orig                
+            # No special audiostream is needed
+            else:
+                self.audio = aud_orig
+
+            # Get the correct subs
+            self.SetSubs(setting_discorig, sub_forn, sub_hear, sub_nor, aud_orig_l, sub_l)
+
+    def Get_nfo_set(self, nfo_xml, BIU_file, extras_subdir):
+        # for every video node in this disc
+        # Init
+        backpathiso_UTF8 = None
+        mpls_u = None
+        found_match = False             # is used to break out of the outer loop if we found our file
+        for lang_XML in nfo_xml:
+            for video_XML in lang_XML:
+                if video_XML.tag == "video":
+                    log('Videofile = %s' % (video_XML.attrib['filename']))
+                    # Get the subdir attrib
+                    # Init to true
+                    match_video = True
+                    # Check if subdir attrib exists in this video tag
+                    if 'subdir' in video_XML.attrib:
+                        log("Video tag has a subdir attribute!")
+                        myvideo_attrib_UTF8 = video_XML.attrib['subdir']
+                        # subdir attrib exists, lets check if it matches
+                        if myvideo_attrib_UTF8 is not None:
+                            if myvideo_attrib_UTF8 != extras_subdir:
+                                match_video = False
+                                log('Extras subdir does not match.')
+                    # Check for the "NYI" (Not Yet Implemented) video_type
+                    # If we find it then we can't process this video. Kodi doesn't know what to do with it.
+                    if 'video_type' in video_XML.attrib:
+                        myvideo_attrib_UTF8 = video_XML.attrib['video_type']
+                        if myvideo_attrib_UTF8 is not None:
+                            if myvideo_attrib_UTF8 == 'NYI':
+                                # If this flag is false then this video element isn't processed
+                                match_video = False
+                                log('This video element has a NYI video_type. Skipping!')
+                    # Check if the filename attrib contains the correct filename
+                    if ((video_XML.attrib['filename'] == BIU_file) and (match_video)): 
+                        log('Videofile and xml record match.')                      # if yes: We have a winner!!!
+                        # Playlist number
+                        myplaylistnumber = video_XML.find('playlist')
+                        if myplaylistnumber is not None:
+                            mpls_u = myplaylistnumber.text
+                            if mpls_u is not None:
+                                log('playlist = %s' % mpls_u)
+                            else:
+                                # Bad .xml file, playlist Must contain valid data
+                                self.BIU_ExitHandler('No valid playlist in the XML!! Aborting')
+                                return
+                        # Starttime
+                        st_p_r = 0    # Init
+                        st_i = 0      # Init
+                        mystarttime = video_XML.find('starttime')
+                        if mystarttime is not None:
+                            # Starttime element has children
+                            if len(mystarttime) <> 0:
+                                log('starttime has %s children' % len(mystarttime))
+                                # Get starttime/no_recap element (= starttime)
+                                mystarttime_no_recap = video_XML.find('starttime/no_recap')
+                                if mystarttime_no_recap is not None:
+                                    mystarttime_no_recap_UTF8 = mystarttime_no_recap.text
+                                    if mystarttime_no_recap_UTF8 is not None:
+                                        st_i = self.ConvertTimeToSecs(mystarttime_no_recap_UTF8, "start")
+                                        log('Starttime (no recap) = %s' % mystarttime_no_recap_UTF8)
+                                # Get starttime/plus_recap element
+                                mystarttime_plus_recap = video_XML.find('starttime/plus_recap')
+                                if mystarttime_plus_recap is not None:
+                                    mystarttime_plus_recap_UTF8 = mystarttime_plus_recap.text
+                                    if mystarttime_plus_recap_UTF8 is not None:
+                                        st_p_r = self.ConvertTimeToSecs(mystarttime_plus_recap_UTF8, "start")
+                                        log('Starttime (plus_recap) = %s' % mystarttime_plus_recap_UTF8)
+                            # Starttime element has no children,
+                            # But contains a valid (?) value
+                            else:
+                                # Check if the tag has content, or is empty
+                                mystarttime_UTF8 = mystarttime.text
+                                if mystarttime_UTF8 is not None:
+                                    st_i = self.ConvertTimeToSecs(mystarttime_UTF8, "start")
+                                    log('Starttime = %s' % mystarttime_UTF8)
+                        else:
+                            # No start time found, startime = 0 secs
+                            log("No start time found, startime = 0 secs")
+                        log("Start time = %s" % st_i)
+                        log("Start time plus recap = %s" % st_p_r)
+                        # Get the stoptime (if specified)
+                        # We are playing a new video, so init Stop_time 
+                        Global_BIU_vars["Stop_time"] = Global_BIU_vars["Default_stop_time"] 
+                        mystoptime = video_XML.find('stoptime')
+                        if mystoptime is not None:
+                            # We found the tag
+                            mystoptime_UTF8 = mystoptime.text
+                            # Check if the tag is empty
+                            if mystoptime_UTF8 is not None:
+                                # Tag contains data
+                                stoptime_int = self.ConvertTimeToSecs(mystoptime_UTF8, "stop")
+                                Global_BIU_vars["Stop_time"] = stoptime_int
+                        log('Stoptime = %s seconds' % Global_BIU_vars["Stop_time"])
+                        # Audiostream
+                        au_o_i = -1  # audiostream_orig_int  
+                        au_o_l = ""  # audiostream_orig_lang
+                        au_od_i = -1 # audiostream_orig_desc_int
+                        au_oh_i = -1 # audiostream_orig_hear_imp_int
+                        au_d_i = -1  # audiostream_dubbed_int
+                        au_d_l = ""  # audiostream_dubbed_lang
+                        au_dd_i = -1 # audiostream_dubbed_desc_int
+                        au_dh_i = -1 # audiostream_dubbed_hear_imp_int
+                        myaudiostream = video_XML.find('audiochannel')
+                        if myaudiostream is not None:
+                            # Audiochannel element has children
+                            if len(myaudiostream) <> 0:
+                                log('audiochannel has %s children' % len(myaudiostream))
+                                # Get audiochannel/original element (= audiochannel)
+                                myaudiostream = video_XML.find('audiochannel/original')
+                                if myaudiostream is not None:
+                                    # Get the lang attrib
+                                    myaudiostream_attrib_UTF8 = myaudiostream.attrib["lang"]
+                                    if myaudiostream_attrib_UTF8 is not None:
+                                        au_o_l = myaudiostream_attrib_UTF8
+                                        log('audiochannel language = %s' % au_o_l)
+                                    # Check if element has children
+                                    if len(myaudiostream) <> 0:
+                                        log('audiochannel/original has %s children' % len(myaudiostream))
+                                        # Get the norm tag
+                                        myaudiostream = video_XML.find('audiochannel/original/norm')
+                                        if myaudiostream is not None:
+                                            myaudiostream_UTF8 = myaudiostream.text
+                                            if myaudiostream_UTF8 is not None:
+                                                au_o_i = int(myaudiostream_UTF8)
+                                                log('audiochannel/original/norm = %s' % myaudiostream_UTF8)
+                                        # Get the desc_nar tag
+                                        myaudiostream = video_XML.find('audiochannel/original/desc_nar')
+                                        if myaudiostream is not None:
+                                            myaudiostream_UTF8 = myaudiostream.text
+                                            if myaudiostream_UTF8 is not None:
+                                                au_od_i = int(myaudiostream_UTF8)
+                                                log('audiochannel/original/desc_nar = %s' % myaudiostream_UTF8)
+                                        # Get the hear_imp tag
+                                        myaudiostream = video_XML.find('audiochannel/original/hear_imp')
+                                        if myaudiostream is not None:
+                                            myaudiostream_UTF8 = myaudiostream.text
+                                            if myaudiostream_UTF8 is not None:
+                                                au_oh_i = int(myaudiostream_UTF8)
+                                                log('audiochannel/original/hear_imp = %s' % myaudiostream_UTF8)
+                                    # Element has no children
+                                    else: 
+                                        myaudiostream_UTF8 = myaudiostream.text
+                                        if myaudiostream_UTF8 is not None:
+                                            au_o_i = int(myaudiostream_UTF8)
+                                            log('audiochannel/original = %s' % myaudiostream_UTF8)
+                                # Get audiochannel/dubbed element 
+                                myaudiostream_dubbed = video_XML.find('audiochannel/dubbed')
+                                if myaudiostream_dubbed is not None:
+                                    # Get the lang attrib
+                                    myaudiostream_dubbed_attrib_UTF8 = myaudiostream_dubbed.attrib["lang"]
+                                    if myaudiostream_dubbed_attrib_UTF8 is not None:
+                                        au_d_l = myaudiostream_dubbed_attrib_UTF8
+                                        log('audiochannel/dubbed language = %s' % au_d_l)
+                                    # Check if element has children
+                                    if len(myaudiostream_dubbed) <> 0:
+                                        log('audiochannel/dubbed has %s children' % len(myaudiostream_dubbed))
+                                        # Get the norm tag
+                                        myaudiostream_dubbed = video_XML.find('audiochannel/dubbed/norm')
+                                        myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
+                                        if myaudiostream_dubbed_UTF8 is not None: 
+                                            au_d_i = int(myaudiostream_dubbed_UTF8)
+                                            log('audiochannel/dubbed/norm = %s' % myaudiostream_dubbed_UTF8)
+                                        # Get the desc_nar tag
+                                        myaudiostream_dubbed = video_XML.find('audiochannel/dubbed/desc_nar')
+                                        if myaudiostream_dubbed is not None:
+                                            myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
+                                            if myaudiostream_dubbed_UTF8 is not None:
+                                                au_dd_i = int(myaudiostream_dubbed_UTF8)
+                                                log('audiochannel/dubbed/desc_nar = %s' % myaudiostream_dubbed_UTF8)
+                                        # Get the hear_imp tag
+                                        myaudiostream_dubbed = video_XML.find('audiochannel/dubbed/hear_imp')
+                                        if myaudiostream_dubbed is not None:
+                                            myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
+                                            if myaudiostream_dubbed_UTF8 is not None:
+                                                au_dh_i = int(myaudiostream_dubbed_UTF8)
+                                                log('audiochannel/dubbed/hear_imp = %s' % myaudiostream_dubbed_UTF8)
+                                    # Element has no children
+                                    else: 
+                                        myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
+                                        if myaudiostream_dubbed_UTF8 is not None:
+                                            au_o_i = int(myaudiostream_dubbed_UTF8)
+                                            log('audiochannel/dubbed = %s' % myaudiostream_dubbed_UTF8)
+                            # Audiochannel element has no children
+                            else:
+                                # Check if the tag has content, or is empty
+                                myaudiostream_UTF8 = myaudiostream.text
+                                if myaudiostream_UTF8 is not None:
+                                    au_o_i = int(myaudiostream_UTF8)
+                                    log('audiochannel = %s' % myaudiostream_UTF8)
+                                    # Get the lang attrib
+                                    myaudiostream_attrib_UTF8 = myaudiostream.attrib["lang"]
+                                    if myaudiostream_attrib_UTF8 is not None:
+                                        au_o_l = myaudiostream_attrib_UTF8
+                                        log('audiochannel language = %s' % au_o_l)
+                        # Subtitlestream
+                        su_i = -1
+                        su_l = ""
+                        su_h_i = -1
+                        su_f_i = -1
+                        mysubtitlestream = video_XML.find('subtitlechannel')
+                        if mysubtitlestream is not None:
+                            # Mysubtitlestream element has children
+                            if len(mysubtitlestream) <> 0:
+                                log('Subtitlestream has %s children' % len(mysubtitlestream))
+                                # Get lang attrib
+                                mysubtitlestream_attrib_UTF8 = mysubtitlestream.attrib["lang"]
+                                if mysubtitlestream_attrib_UTF8 is not None:
+                                    su_l = mysubtitlestream_attrib_UTF8
+                                    log('audiochannel language = %s' % su_l)
+                                # Get subtitlechannel/norm element (= subtitlechannel)
+                                mysubtitlestream = video_XML.find('subtitlechannel/norm')
+                                if mysubtitlestream is not None:
+                                    mysubtitlestream_UTF8 = mysubtitlestream.text
+                                    if mysubtitlestream_UTF8 is not None:
+                                        su_i = int(mysubtitlestream_UTF8)
+                                        log('subtitlechannel = %s' % mysubtitlestream_UTF8)
+                                # Get subtitlechannel/hear_imp element 
+                                mysubtitlestream_hear_imp = video_XML.find('subtitlechannel/hear_imp')
+                                # Did we find this element?
+                                if mysubtitlestream_hear_imp is not None:
+                                    mysubtitlestream_hear_imp_UTF8 = mysubtitlestream_hear_imp.text
+                                    # Is the element empty?
+                                    if mysubtitlestream_hear_imp_UTF8 is not None:
+                                        su_h_i = int(mysubtitlestream_hear_imp_UTF8)
+                                        log('subtitlechannel/hear_imp = %s' % mysubtitlestream_hear_imp_UTF8)
+                                # Get subtitlechannel/for_lang element 
+                                mysubtitlestream_for_lang = video_XML.find('subtitlechannel/for_lang')
+                                if mysubtitlestream_for_lang is not None:
+                                    mysubtitlestream_for_lang_UTF8 = mysubtitlestream_for_lang.text
+                                    if mysubtitlestream_for_lang_UTF8 is not None:
+                                        su_f_i = int(mysubtitlestream_for_lang_UTF8)
+                                        log('subtitlechannel/for_lang = %s' % mysubtitlestream_for_lang_UTF8)
+                            # Mysubtitlestream element has no children
+                            else:
+                                # Check if the tag has content, or is empty
+                                mysubtitlestream_UTF8 = mysubtitlestream.text
+                                if mysubtitlestream_UTF8 is not None:
+                                    su_i = int(mysubtitlestream_UTF8)
+                                    log('subtitlechannel = %s' % mysubtitlestream_UTF8)
+                                    # Get lang attrib
+                                    mysubtitlestream_attrib_UTF8 = mysubtitlestream.attrib["lang"]
+                                    if mysubtitlestream_attrib_UTF8 is not None:
+                                        su_l = mysubtitlestream_attrib_UTF8
+                                        log('audiochannel language = %s' % su_l)
+                        found_match = True
+                        break   # No need to check the other entries, we found our match.
+            if found_match:
+                break
+        # starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int,
+        # audiostream_dubbed_lang, subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int,
+        # myplaylistnumber_UTF8, subtitlestream_lang, audiostream_orig_desc_int, audiostream_dubbed_desc_int,
+        # audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int
+        return (st_p_r, st_i, au_o_i, au_o_l, au_d_i, au_d_l, su_i, su_h_i, su_f_i, mpls_u, su_l, au_od_i, au_dd_i, au_oh_i, au_dh_i)
+
+ 
     # Test
     def onPlayBackPaused(self):
         log('Playback paused by user')
-        
+
+    # Test    
     def onPlayBackResumed(self):
         log('Playback resumed by user')
     
@@ -235,10 +670,6 @@ class BIUplayer(xbmc.Player):
         # Needed to get stoptime to the deamon, and for the watched state
         global Global_BIU_vars
         global Global_video_dict
-
-        '''JSON_req = {"jsonrpc": "2.0", "method": "JSONRPC.Introspect", "params": { "filter": { "id": "VideoLibrary.SetMovieDetails", "type": "method" } }, "id": 1 }
-        JSON_result = utils.executeJSON(JSON_req)
-        log('JSON syntax query = %s' % JSON_result)'''              
 
 	BIU_videofile_unicode = ""	    # Init
         # See what file we are now playing. 
@@ -453,7 +884,9 @@ class BIUplayer(xbmc.Player):
                     Global_video_dict["BIU_Writer_unicode"] = JSON_result["result"]["moviedetails"]["writer"]
                     
             except Exception:
-                log('Error getting JSON response, media is probably unknown!!')
+                # We get here if we start the video from "Videos"
+                # Or if we play a non-movie/episode video (eg extras)
+                log('Error getting JSON response, media is unknown!! Video probably started from Videos.')
                 Global_video_dict["BIU_Art_Thumb_unicode"] = ""
                 Global_video_dict["BIU_Art_Poster_unicode"] = ""
                 Global_video_dict["BIU_Title_unicode"] = ""
@@ -462,10 +895,11 @@ class BIUplayer(xbmc.Player):
                 Global_video_dict["BIU_DateAdded_unicode"] = ""
                 Global_video_dict["BIU_OriginalTitle_unicode"] = ""
                 Global_video_dict["BIU_UserRating_unicode"] = ""
+                Global_video_dict["BIU_RunTime_unicode"] = ""
                 Global_video_dict["BIU_Rating_unicode"] = ""
                 Global_video_dict["BIU_Writer_unicode"] = ""
                 Global_video_dict["BIU_Director_unicode"] = ""
-                Global_video_dict["BIU_StreamDetails_unicode"] = ""
+                Global_video_dict["BIU_StreamDetails_unicode"] = {'audio':[], 'subtitle':[], 'video':[]}
                 Global_video_dict["BIU_LastPlayed_unicode"] = ""
                 Global_video_dict["BIU_Cast_unicode"] = ""
                 Global_BIU_vars["PlayCount"] = 0
@@ -482,7 +916,24 @@ class BIUplayer(xbmc.Player):
 		
             # First validatepath to get the slashes OK,
             # then translatepath to get all the paths working.
-            BIU_file_unicode = xbmc.validatePath(BIU_FolderPath_unicode + 'BIUinfo.xml').decode("utf-8")
+            BIU_FolderPath_unicode = xbmc.validatePath(BIU_FolderPath_unicode).decode("utf-8")
+            # Init
+            BIU_extras_subdir = ""
+            # Cut of the extras dir if we are viewing extras
+            s_index = BIU_FolderPath_unicode.rfind(u"Extras\\")
+            # rfind found a match, we are watching extras
+            if s_index != -1:
+                # Check if this extras video sits in the extras root dir
+                if s_index + len(u"Extras\\") != len(BIU_FolderPath_unicode):
+                    tt = s_index + len(u"Extras\\")
+                    # Get the extras subdir
+                    BIU_extras_subdir = BIU_FolderPath_unicode[tt:len(BIU_FolderPath_unicode)-1]
+                    log("BIU_extras_subdir = %s" % BIU_extras_subdir)
+                BIU_FolderPath_unicode = BIU_FolderPath_unicode[0:s_index]
+                log("BIU_FolderPath_unicode = %s" % BIU_FolderPath_unicode)
+                    
+            # Construct the BIUinfo.xml location
+            BIU_file_unicode = xbmc.validatePath(BIU_FolderPath_unicode + 'BIUfiles/BIUinfo.xml').decode("utf-8")
             BIU_file_unicode = xbmc.translatePath(BIU_file_unicode).decode("utf-8")
             log('BIUfile.xml = %s ' % BIU_file_unicode)
 
@@ -491,54 +942,73 @@ class BIUplayer(xbmc.Player):
                 tree_XML = ET.parse(BIU_file_unicode)
                 directorydetails_XML = tree_XML.getroot()
                 log('BIUfile.xml file has been read.')
-            except:
-                self.BIU_ExitHandler('Error reading BIUfile.xml!!')
+            except Exception:
+                self.BIU_ExitHandler('General exception : Error reading BIUfile.xml!!')
                 return
 
-            # Init
-            backpathiso_UTF8 = None
-            myplaylistnumber_UTF8 = None
-            mystarttime_UTF8 = None
-            mystoptime_UTF8 = None
-            myaudiostream_UTF8 = None
-            mysubtitlestream_UTF8 = None
             # Extract all settings from the BIUfile.xml file.
-            for video_XML in directorydetails_XML:                              # for every video node
-                log('Videofile = %s' % (video_XML.attrib['filename']))
-                # check if the filename attrib contains the correct filename
-                if (video_XML.attrib['filename'] == BIU_FileName_unicode): 
-                    log('Videofile and xml record match.')                      # if yes: We have a winner!!!
-                    # Location of the iso file
-                    backpathiso = video_XML.find('isofile')
-                    if backpathiso is not None:
-                        backpathiso_UTF8 = backpathiso.text
-                        log('isofile = %s' % backpathiso_UTF8)
-                    # Playlist number
-                    myplaylistnumber = video_XML.find('playlist')
-                    if myplaylistnumber is not None:
-                        myplaylistnumber_UTF8 = myplaylistnumber.text
-                        log('playlist = %s' % myplaylistnumber_UTF8)
-                    # Starttime
-                    mystarttime = video_XML.find('starttime')
-                    if mystarttime is not None:
-                        mystarttime_UTF8 = mystarttime.text
-                        log('starttime = %s' % mystarttime_UTF8)
-                    # Stoptime
-                    mystoptime = video_XML.find('stoptime')
-                    if mystoptime is not None:
-                        mystoptime_UTF8 = mystoptime.text
-                        log('stoptime = %s' % mystoptime_UTF8)
-                    # Audiostream
-                    myaudiostream = video_XML.find('audiochannel')
-                    if myaudiostream is not None:
-                        myaudiostream_UTF8 = myaudiostream.text
-                        log('audiochannel = %s' % myaudiostream_UTF8)
-                    # Subtitlestream
-                    mysubtitlestream = video_XML.find('subtitlechannel')
-                    if mysubtitlestream is not None:
-                        mysubtitlestream_UTF8 = mysubtitlestream.text
-                        log('subtitlechannel = %s' % mysubtitlestream_UTF8)
-                    break               # No need to check the other entries, we found our match.
+            for discdetails_XML in directorydetails_XML:    # for every disc
+                # Location of the iso file
+                backpathiso = discdetails_XML.find('isofile')
+                if backpathiso is not None:
+                    backpathiso_UTF8 = backpathiso.text
+                    log('isofile = %s' % backpathiso_UTF8)
+                else:
+                    # Bad .xml file, we need a isofile.
+                    self.BIU_ExitHandler('No valid isofile in the XML!! Aborting')
+                    return
+
+                # Find best disclanguage
+                self.DiscLanguage = ""
+                # Primary language
+                for disc_lang in discdetails_XML.findall('disclanguage'):
+                    log("disclang= %s" % disc_lang.get("lang"))
+                    log("set.prim_lang = %s" % settings.prim_disc_lang)
+                    if disc_lang.get("lang") == settings.prim_disc_lang:
+                        self.DiscLanguage = disc_lang.get("lang")
+                        log("Found prim lang : %s" % self.DiscLanguage)
+                        starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
+                        subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
+                        audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
+                        = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
+                        
+                # Secundary language
+                # Search only if no primary language found
+                if ((self.DiscLanguage == "") and (settings.sec_disc_lang != ("---" or "-a-"))):
+                    for disc_lang in discdetails_XML.findall('disclanguage'):
+                        log("disclang= %s" % disc_lang.get("lang"))
+                        log("set.sec_lang = %s" % settings.sec_disc_lang)
+                        if disc_lang.get("lang") == settings.sec_disc_lang:
+                            self.DiscLanguage = disc_lang.get("lang")
+                            log("Found sec lang : %s" % self.DiscLanguage)
+                            starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
+                            subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
+                            audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
+                            = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
+                        
+                # Other language
+                # Search only if no primary or secundary language found
+                if ((self.DiscLanguage == "") and (settings.other_disc_lang != ("---" or "-a-"))):
+                    for disc_lang in discdetails_XML.findall('disclanguage'):
+                        log("disclang= %s" % disc_lang.get("lang"))
+                        log("set.other_lang = %s" % settings.other_disc_lang)
+                        if disc_lang.get("lang") == settings.other_disc_lang:
+                            self.DiscLanguage = disc_lang.get("lang")
+                            log("Found other lang : %s" % self.DiscLanguage)
+                            starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
+                            subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
+                            audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
+                            = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
+                        
+                # Any language
+                # Search only if no primary, secundary or other language found
+                if self.DiscLanguage == "":
+                    self.DiscLanguage = discdetails_XML.find('disclanguage').get("lang")
+                    log("set.any_lang = %s" % self.DiscLanguage)
+                    starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, subtitlestream_int, \
+                    subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, audiostream_orig_desc_int, \
+                    audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
+                    = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
 
             # The base path is "BIU_Path_unicode". Normally the user would place the iso file
             # in a subdirectory of the base path. However, with the following code section it is also
@@ -547,7 +1017,10 @@ class BIUplayer(xbmc.Player):
             backpathdir_unicode = BIU_FolderPath_unicode
             log("BIU_Backpathdir = %s" % backpathdir_unicode)
             if backpathiso_UTF8 != None:
-                backpathiso_unicode = backpathiso_UTF8.decode("utf-8")
+                # Pffff!! I don't understand why this fails
+                #backpathiso_unicode = backpathiso_UTF8.decode('utf-8')
+                # and why this works...
+                backpathiso_unicode = backpathiso_UTF8
             else:
                 self.BIU_ExitHandler('Backpathiso_UTF8 is empty.')
                 return
@@ -591,9 +1064,10 @@ class BIUplayer(xbmc.Player):
             # Aaargh!!! urllib.quote does not work with unicode strings!! Great!!!
             # Encode first to UTF-8. Luckely UTF-8 works...
             myescapedisofile_UTF8 = myisofile_unicode.encode("utf-8")
-            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='!')
+            # see: http://stackoverflow.com/questions/22415345/using-pythons-urllib-quote-plus-on-utf-8-strings-with-safe-arguments
+            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='()!'.encode("utf-8"))
             myescapedisofile_UTF8 = 'udf://' + myescapedisofile_UTF8 + '/'
-            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='()!')
+            myescapedisofile_UTF8 = urllib.quote(myescapedisofile_UTF8, safe='()!'.encode("utf-8"))
             myescapedisofile_UTF8 = 'bluray://' + myescapedisofile_UTF8 + '/BDMV/PLAYLIST/' + myplaylistnumber_UTF8 + '.mpls'
             log("Myescapedisofile_UTF8 = %s" % myescapedisofile_UTF8)
 
@@ -614,7 +1088,8 @@ class BIUplayer(xbmc.Player):
 
                     # Check if the user wants to resume this video
                     dialog = xbmcgui.Dialog()
-                    dialog_ret = dialog.yesno('Kodi', 'Do you want this video to resume from %s ?'% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
+                    #dialog_ret = dialog.yesno('Kodi', 'Do you want this video to resume from %s ?'% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
+                    dialog_ret = dialog.yesno('Kodi', utils.localise(32843)% self.ConvertSecsToTime(Global_BIU_vars["Resume_Time"]))
                     if not dialog_ret:
                         # User doesn't want to resume, set resumetime to 0
                         log("User does not want to resume this video.")
@@ -623,75 +1098,76 @@ class BIUplayer(xbmc.Player):
                     # No
                     log("No resume point in the db for this video.")
             except Exception:
-                log("Error accessing db! (Getting resume point)")
+                self.BIU_ExitHandler("Error accessing db! (Getting resume point)")
+                return
             finally:
                 # Close db
-                sqlcon_wl.close()
-            
-            # Get the starttime (if specified)
-            Global_BIU_vars["Start_time"] = 0        # We are playing a new video, so init self.Starttime
-            if mystarttime_UTF8 != None:             # A starttime was specified in the .xml file.
-                try:
-                    Global_BIU_vars["Start_time"] = self.ConvertTimeToSecs(mystarttime_UTF8)
-                except Exception:
-                    log('Error converting starttime. Using 0 sec instead.')
-                    Global_BIU_vars["Start_time"] = 0
-            log('Starttime = %s seconds' % Global_BIU_vars["Start_time"])
+                if sqlcon_wl:
+                    sqlcon_wl.close()
+                else:
+                    log("Error getting resume info from db.")
 
-            # Get the stoptime (if specified)
-            # We use a globel var because we need to check time outside this class.
-            # We are playing a new video, so init Stop_time 
-            Global_BIU_vars["Stop_time"] = Global_BIU_vars["Default_stop_time"] 
-            if mystoptime_UTF8 != None:              # A stoptime was specified in the .xml file.
-                try:
-                    Global_BIU_vars["Stop_time"] = self.ConvertTimeToSecs(mystoptime_UTF8)
-                except Exception:
-                    log('Error converting stoptime. Using 9999999 sec instead.')
-                    Global_BIU_vars["Stop_time"] = Default_stop_time            
-            log('Stoptime = %s seconds' % Global_BIU_vars["Default_stop_time"])
+            # Check if there are external subtitles for this video.
+            # If there are external subtitles, then these will ALWAYS override the
+            # internal subtitles (user put them there for a reason, so use em!).
+            # Format:
+            # video file: videofile.strm
+            # subs file : videofile.srt
+            # subs file : videofile.ass
+            self.ExtSubFile = ''
+            temp_string = BIU_FileName_unicode[:-4]
+            BIU_subtitlefile_unicode = xbmc.validatePath(BIU_FolderPath_unicode + temp_string).decode("utf-8")
+            BIU_subtitlefile_unicode = xbmc.translatePath(BIU_subtitlefile_unicode).decode("utf-8")
+            log("Ext sub: base path = %s" % BIU_subtitlefile_unicode)
+            # Check if subtitle file is a .srt file.
+            if xbmcvfs.exists(BIU_subtitlefile_unicode + 'srt'):
+                self.ExtSubFile = BIU_subtitlefile_unicode + 'srt'
+                log('External subtitle file is : %s' % self.ExtSubFile)
+            # Check if subtitle file is a .ass file.
+            if xbmcvfs.exists(BIU_subtitlefile_unicode + 'ass'):
+                self.ExtSubFile = BIU_subtitlefile_unicode + 'ass'
+                log('External subtitle file is : %s' % self.ExtSubFile)
 
-            # Get the audiostream from the .xml file (if any)
-            # and put this in self.reqaudio
-            self.reqaudio = -1                          # Init var
-            try:
-                self.reqaudio = int(myaudiostream)      # Will except if myaudiostream == None
-                log('Reqaudiochannel = %s' % self.reqaudio)
-            except Exception:
-                log('No valid audiostream specified in the .xml file!')
 
-            # Get the subtitlestream from the .xml file (if any)
-            # and put this is self.reqsubtitle
-            self.reqsubtitle = -1                           # Init var
-            try:
-                self.reqsubtitle = int(mysubtitlestream)    # Will except if mysubtitlestream == None
-                log('Reqsubtitlestream = %s' % self.reqsubtitle)
-                if self.reqsubtitle == 0:
-                    log('External subtitle file wanted.')
-                    # Get the external subtitle filename.
-                    # Could be: '.srt'; ...
-                    temp_string = BIU_FileName_unicode[:-3]
-                    BIU_subtitlefile_unicode = xbmc.validatePath(BIU_FolderPath_unicode + temp_string).decode("utf-8")
-                    BIU_subtitlefile_unicode = xbmc.translatePath(BIU_subtitlefile_unicode).decode("utf-8")
-                    # Check if subtitle file is a .srt file.
-                    if xbmcvfs.exists(BIU_subtitlefile_unicode + 'srt'):
-                        self.ExtSubFile = BIU_subtitlefile_unicode + 'srt'
-                        log('Subtitlefile is : %s' % self.ExtSubFile)
-                    # No valid subtitle file found!
-                    else:
-                        self.reqsubtitle = -1 # Use whatever default the user has
-                        raise
-            except Exception:
-                log('No valid subtitlestream specified in the .xml file!')
+            # Check if we have a wanted disc language.
+            # And if found, get the apply the settings from the file
+            # Result will be: self.audio, self.subtitle and self.show_subs will hold valid data for use in pass 2
+            if self.DiscLanguage == settings.prim_disc_lang:
+                log("Disc lang = prim")
+                self.SetDiscAudSub(settings.prim_audio_lang, settings.prim_SubDubbedLang, settings.prim_SubOrigLang, starttime_plus_recap_int, starttime_int, audiostream_dubbed_int, audiostream_orig_int, \
+                                   subtitlestream_for_lang_int, subtitlestream_hear_imp_int, subtitlestream_int, audiostream_orig_lang, audiostream_dubbed_lang, subtitlestream_lang, \
+                                   audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int)
+            elif self.DiscLanguage == settings.sec_disc_lang:
+                log("Disc lang = sec")
+                self.SetDiscAudSub(settings.sec_audio_lang, settings.sec_SubDubbedLang, settings.sec_SubOrigLang, starttime_plus_recap_int, starttime_int, audiostream_dubbed_int, audiostream_orig_int, \
+                                   subtitlestream_for_lang_int, subtitlestream_hear_imp_int, subtitlestream_int, audiostream_orig_lang, audiostream_dubbed_lang, subtitlestream_lang, \
+                                   audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int)
+            elif self.DiscLanguage == settings.other_disc_lang:
+                log("Disc lang = other")
+                self.SetDiscAudSub(settings.other_audio_lang, settings.other_SubDubbedLang, settings.other_SubOrigLang, starttime_plus_recap_int, starttime_int, audiostream_dubbed_int, \
+                                   audiostream_orig_int, subtitlestream_for_lang_int, subtitlestream_hear_imp_int, subtitlestream_int, audiostream_orig_lang, audiostream_dubbed_lang, \
+                                   subtitlestream_lang, audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int)
+            else:
+                # Catch all, for if no "any" language was selected in the previous 3 selections
+                # Gives original language and (hopefully) (external) subs
+                log("Disc lang = catch_all")
+                self.SetDiscAudSub("orig", "yes", "yes", starttime_plus_recap_int, starttime_int, audiostream_dubbed_int, audiostream_orig_int, subtitlestream_for_lang_int, subtitlestream_hear_imp_int, \
+                                   subtitlestream_int, audiostream_orig_lang, audiostream_dubbed_lang, subtitlestream_lang, audiostream_orig_desc_int, audiostream_dubbed_desc_int, \
+                                   audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int)
+            log("Self.audio track = : %s" % int(self.audio))
+            log("Self.subtitle track = : %s" % int(self.subtitle))
+            log("Self.Show_subs = : %s" % ("true" if self.Show_subs else "false"))
 
             # Play the correct bluray playlist
-            # Fill first a listitem with the values of the .BIUfile.mp3 file. This way we get the correct mediainfo
+            # Fill first a listitem with the values of the .BIUfile.mp3/.strm file. This way we get the correct mediainfo
             # while playing our bluray playlist. Otherwise this is empty (thumb picture) or 00800.mpls as name...
             # Could be that we need to copy more later, other skins might want to display other listitems.infolabels
-            mylistitems = xbmcgui.ListItem (Global_video_dict["BIU_Title_unicode"])
+            mylistitems = xbmcgui.ListItem(Global_video_dict["BIU_Title_unicode"])
             mylistitems.setArt({'thumb': Global_video_dict["BIU_Art_Thumb_unicode"]})
             mylistitems.setArt({'poster': Global_video_dict["BIU_Art_Poster_unicode"]})
             # Add the resumetime to the starttime
             startplayingfrom = Global_BIU_vars["Start_time"] + Global_BIU_vars["Resume_Time"]
+            log("Start playing from is : %s" % startplayingfrom)
             # If startplayingfrom <> 0 then start the video with the correct starttime (StartOffset).
             if startplayingfrom != 0:
                 mylistitems.setProperty('StartOffset', str(startplayingfrom))  # Is better alternative to 'start and then seek'
@@ -750,56 +1226,39 @@ class BIUplayer(xbmc.Player):
             # Set flag to true, doing this earlier could set a video as watched (12 sec black video ends)
             self.isPlayingBIUBluRay = True
             # Temporary 'the end' for onPlayBackStarted.
-            # Now it's waiting for the second pass, where we extract subtitle
-            # and audio info from the correct bluray playlist.
+            # Now it's waiting for the second pass, where we set subtitle
+            # and audio info for the correct bluray playlist.
 
 
 
         # Here we have the second pass of our service.
         # We detect this by looking at the filename of the current playing file.
         # If it includes ".BIUfiles" then we have a hit.
-        if (self.isPlayingBIUBluRay and ('.BIUfiles' in Nowplaying)):
+        if (self.isPlayingBIUBluRay and ('BIUfiles' in Nowplaying)):
             log('Second pass of the service script')
 
-            # If a audiostream number is set in the .xml file,
-            # then we enable that audiostream here
-            audiostreams = self.getAvailableAudioStreams()
-            log('Available audiostreams = %s' % audiostreams)
-            numberofaudiostreams = len(audiostreams)
-            log('Number of audiostreams = %s' % numberofaudiostreams)
-            log('Reqaudiochannel = %s' % self.reqaudio)
-            if self.reqaudio != -1:
-                # The .xml file contains a valid (?) audio stream number
-                if ((self.reqaudio > 0) and (self.reqaudio <= numberofaudiostreams)):
-                    reqaudiochannel = self.reqaudio - 1 # Goes from 0 to count-1 in Kodi
-                    self.setAudioStream(reqaudiochannel)
-                    log('Audiostream %s set' % (reqaudiochannel + 1))
-                else:
-                    log('No valid audiostream specified in the .xml file!')
-                    
-            # If a subtitlestream number is set in the .xml file,
-            # then we enable that subtitlestream here                
-            subtitlestreams = self.getAvailableSubtitleStreams()
-            log('Available subtitlestreams = %s' % subtitlestreams)
-            numberofsubtitlestreams = len(subtitlestreams)
-            log('Number of subtitlestreams = %s' % numberofsubtitlestreams)
-            log('Reqsubtitlestream = %s' % self.reqsubtitle)
-            if self.reqsubtitle != -1:
-                # The .xml file contains a valid (?) subtitle stream number
-                try:
-                    log('1')
-                    if self.reqsubtitle == 0:               # Use an external subtitle stream file.
-                        log('External subtitlestream enabled')
-                        log('Subtitle file = %s ' % self.ExtSubFile)
-                        self.setSubtitles(self.ExtSubFile)
-                    elif ((self.reqsubtitle > 0) and (self.reqsubtitle <= numberofsubtitlestreams)): # Use internal subtitles
-                        log('Internal subtitlestream %s enabled' % self.reqsubtitle)
-                        reqsubtitlestream = self.reqsubtitle - 1   # Goes from 0 to count-1 in Kodi
-                        self.setSubtitleStream(reqsubtitlestream)
-                        self.showSubtitles(True)
-                except Exception:
-                    log('No valid subtitlestream specified in the .xml file!')         
+            # Set the correct audiostream.
+            self.setAudioStream(self.audio)
+            log('Audiostream %s set' % self.audio)
 
+            # Set the correct subtitle stream, or none if the user wants no subtitles
+            # Check if the user wants to see subs
+            if self.Show_subs:
+                # Do we use internal subs?
+                if self.ExtSubFile == '':
+                    # self.ExtSubFile = '' is empty, so use internal (to the iso) subs
+                    self.setSubtitleStream(self.subtitle)
+                    self.showSubtitles(True)
+                    log('Internal subtitlestream %s enabled' % self.subtitle)
+                # Nope, they are external
+                else:
+                    self.setSubtitles(self.ExtSubFile)
+                    self.showSubtitles(True)
+                    log('External subtitlestream enabled')
+            else:
+                # No subs, please
+                self.showSubtitles(False)
+            
             # Calculate the video duration, needed for watched flag
             if Global_BIU_vars["Stop_time"] != Global_BIU_vars["Default_stop_time"]:
                 # We have a non default stoptime
@@ -809,79 +1268,12 @@ class BIUplayer(xbmc.Player):
                 Global_BIU_vars["Duration"] = self.getTotalTime() - Global_BIU_vars["Start_time"]
             log('Video duration = %s' % str(Global_BIU_vars["Duration"]))
 
-            # Set all streamdetails so we can save
-            if Global_BIU_vars["Update_Streamdetails"] == True:
-                pass
-
-
-            
-
-            BIU_videoresolution = xbmc.getInfoLabel('VideoPlayer.VideoResolution').decode("utf-8")
-            log('VideoPlayer.VideoResolution = %s ' % BIU_videoresolution)
-            BIU_videoaspect = xbmc.getInfoLabel('VideoPlayer.VideoAspect').decode("utf-8")
-            log('VideoPlayer.VideoAspect = %s ' % BIU_videoaspect)
-            BIU_audiocodec = xbmc.getInfoLabel('VideoPlayer.AudioCodec').decode("utf-8")
-            log('VideoPlayer.AudioCodec = %s ' % BIU_audiocodec)
-            BIU_audiochannels = xbmc.getInfoLabel('VideoPlayer.AudioChannels').decode("utf-8")
-            log('VideoPlayer.AudioChannels = %s ' % BIU_audiochannels)
-            BIU_audiolanguage = xbmc.getInfoLabel('VideoPlayer.AudioLanguage').decode("utf-8")
-            log('VideoPlayer.AudioLanguage = %s ' % BIU_audiolanguage)
-            BIU_subtitleslanguage = xbmc.getInfoLabel('VideoPlayer.SubtitlesLanguage').decode("utf-8")
-            log('VideoPlayer.SubtitlesLanguage = %s ' % BIU_subtitleslanguage)
-            BIU_duration = xbmc.getInfoLabel('VideoPlayer.Duration').decode("utf-8")
-            log('VideoPlayer.Duration = %s ' % BIU_duration)
-            BIU_videocodec = xbmc.getInfoLabel('VideoPlayer.VideoCodec').decode("utf-8")
-            log('VideoPlayer.VideoCodec = %s ' % BIU_videocodec)
-            BIU_DBID = xbmc.getInfoLabel('VideoPlayer.DBID').decode("utf-8")
-            log('VideoPlayer.DBID = %s ' % BIU_DBID)
-
-
-
-
-
-                
-
-
-
-
-
-
-
-
-            # Extract data from the videoplayer that we use to update the Kodi DB (through JSON)
-            #run_time = int(self.getTotalTime())
-            #log('runtime = %s' % run_time)
-            #run_time = TimeStamptosqlDateTime(run_time)
-
-            '''JSON_req = {"jsonrpc": "2.0",
-                        "method": "VideoLibrary.SetEpisodeDetails",
-                        "params": {"episodeid": Global_BIU_vars["Video_ID"],
-                                   "runtime": run_time},
-                        "id": 1}
-            log('VideoLibrary.SetEpisodeDetails sends: %s' % JSON_req)
-            JSON_result = utils.executeJSON(JSON_req)
-            log('JSON VideoLibrary.GetEpisodeDetails result = %s' % JSON_result)'''                
-
-
-            # This is used to make playcount again 0 for the playing video
-            # Uncomment en run to reset watched state
-            '''JSON_req = {"jsonrpc": "2.0",
-                        "method": "VideoLibrary.SetEpisodeDetails",
-                        "params": {"episodeid": Global_BIU_vars["Video_ID"],
-                                   "playcount": 0},
-                        "id": 1}
-            JSON_result = utils.executeJSON(JSON_req)
-            log('JSON VideoLibrary.GetEpisodeDetails result = %s' % JSON_result)'''                
-
-
-
-
 
 # Main loop 
 class Main:
     def __init__(self):
         self._init_vars()
-        if settings.service_enabled == 'false':
+        if not settings.service_enabled:
             # Always logged, user should know the addon is not enabled while debugging turned off.
             xbmc.log('%s: Service not enabled' % ADDONNAME, level=xbmc.LOGDEBUG)
         self._daemon()
@@ -902,16 +1294,16 @@ class Main:
             advancedsettings_XML = tree_XML.getroot()
             log('advancedsettings.xml file has been read.')
             # Get all values
-            for video_XML in advancedsettings_XML:            
-                Temp = advancedsettings_XML.find("video/playcountminimumpercent")
-                if Temp is not None:
-                    Global_BIU_vars["playcountminimumpercent"] = int(Temp.text)
-                Temp = advancedsettings_XML.find("video/ignoresecondsatstart")
-                if Temp is not None:
-                    Global_BIU_vars["ignoresecondsatstart"] = int(Temp.text)
-                Temp = advancedsettings_XML.find("video/ignorepercentatend")
-                if Temp is not None:
-                    Global_BIU_vars["ignorepercentatend"] = int(Temp.text)
+            #for video_XML in advancedsettings_XML:            
+            Temp = advancedsettings_XML.find("video/playcountminimumpercent")
+            if Temp is not None:
+                Global_BIU_vars["playcountminimumpercent"] = int(Temp.text)
+            Temp = advancedsettings_XML.find("video/ignoresecondsatstart")
+            if Temp is not None:
+                Global_BIU_vars["ignoresecondsatstart"] = int(Temp.text)
+            Temp = advancedsettings_XML.find("video/ignorepercentatend")
+            if Temp is not None:
+                Global_BIU_vars["ignorepercentatend"] = int(Temp.text)
         except Exception:
             log('Error reading advancedsettings.xml!!')
         # Log all values
@@ -930,9 +1322,17 @@ class Main:
         except Exception:
             log("Error accessing db! (Init)")
         finally:
+<<<<<<< HEAD
             log("Init - Closing DB.")
             sqlcon_wl.close()
 
+=======
+            if sqlcon_wl:
+                log("Init - Closing DB")
+                sqlcon_wl.close()
+            else:
+                log("Init - Error closing db.")
+>>>>>>> refs/remotes/origin/Develop
 
     def _daemon(self):
 	# Needed for watched state en resumepoint
@@ -945,7 +1345,7 @@ class Main:
                 break
             # This code is needed for checking if we need to stop the player because we
             # reached the stoptime (end of video).
-            if ((settings.service_enabled == 'true') and (BIUplayer().isPlayingVideo()) and (self.player.isPlayingBIUBluRay)):
+            if (settings.service_enabled and (BIUplayer().isPlayingVideo()) and (self.player.isPlayingBIUBluRay)):
                 # We play a BIU video, track current time for watched state
                 Global_BIU_vars["Current_video_time"] = BIUplayer().getTime()
                 log('Daemon: Current video time:  = %s' % str(Global_BIU_vars["Current_video_time"]))
