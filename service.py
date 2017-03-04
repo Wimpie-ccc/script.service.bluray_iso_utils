@@ -1322,17 +1322,11 @@ class Main:
         except Exception:
             log("Error accessing db! (Init)")
         finally:
-<<<<<<< HEAD
-            log("Init - Closing DB.")
-            sqlcon_wl.close()
-
-=======
             if sqlcon_wl:
                 log("Init - Closing DB")
                 sqlcon_wl.close()
             else:
                 log("Init - Error closing db.")
->>>>>>> refs/remotes/origin/Develop
 
     def _daemon(self):
 	# Needed for watched state en resumepoint
