@@ -1285,6 +1285,24 @@ class Main:
         self.monitor = BIUmonitor()
         self.player = BIUplayer()
 
+        # DB is used for resume status
+        try:
+            # Init db
+            sqlcon_wl = sqlite3.connect(os.path.join(ADDONPROFILE, "BIU.db"));
+            sqlcursor_wl = sqlcon_wl.cursor()
+
+            # create tables if they don't exist
+            sqlcursor_wl.execute(QUERY_CREATE_SQLITE)
+            sqlcon_wl.commit()
+        except Exception:
+            log("Error accessing db! (Init)")
+        finally:
+            if sqlcon_wl:
+                log("Init - Closing DB")
+                sqlcon_wl.close()
+            else:
+                log("Init - Error closing db.")
+
         # Read the entire contents of the advancedsettings.xml file.
         # I don't know any other way to get these user setings.
         # And if a user set's these, then my addon should honour those settings.
@@ -1306,27 +1324,12 @@ class Main:
                 Global_BIU_vars["ignorepercentatend"] = int(Temp.text)
         except Exception:
             log('Error reading advancedsettings.xml!!')
+        finally:
         # Log all values
         log('playcountminimumpercent = %s' % str(Global_BIU_vars["playcountminimumpercent"]))
         log('ignoresecondsatstart = %s' % str(Global_BIU_vars["ignoresecondsatstart"]))
         log('ignorepercentatend = %s' % str(Global_BIU_vars["ignorepercentatend"]))
-
-        try:
-            # Init db
-            sqlcon_wl = sqlite3.connect(os.path.join(ADDONPROFILE, "BIU.db"));
-            sqlcursor_wl = sqlcon_wl.cursor()
-
-            # create tables if they don't exist
-            sqlcursor_wl.execute(QUERY_CREATE_SQLITE)
-            sqlcon_wl.commit()
-        except Exception:
-            log("Error accessing db! (Init)")
-        finally:
-            if sqlcon_wl:
-                log("Init - Closing DB")
-                sqlcon_wl.close()
-            else:
-                log("Init - Error closing db.")
+        
 
     def _daemon(self):
 	# Needed for watched state en resumepoint
