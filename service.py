@@ -1285,9 +1285,18 @@ class Main:
         self.monitor = BIUmonitor()
         self.player = BIUplayer()
 
+        # It seems that while INSTALLING the addon, the DB init code is run to quickly.
+        # The BIU.db file can then not be created, because the ADDONPROFILE directory doesn't exist yet.
+        # To fix this problem: check the existence, and create if needed, this directory.
+        log("ADDONPROFILE is : %s" % ADDONPROFILE)
+        if not xbmcvfs.exists(ADDONPROFILE):
+            log("ADDONPROFILE does not yet exists, trying to create it...")
+            success = xbmcvfs.mkdirs(ADDONPROFILE)
+            log("Result creating ADDONPROFILE is : %s" % success)
+
         # DB is used for resume status
         try:
-            # Init db
+            # Init db, create db if needed (works only if dir exists)
             sqlcon_wl = sqlite3.connect(os.path.join(ADDONPROFILE, "BIU.db"));
             sqlcursor_wl = sqlcon_wl.cursor()
 
@@ -1298,7 +1307,7 @@ class Main:
             log("Error accessing db! (Init)")
         finally:
             if sqlcon_wl:
-                log("Init - Closing DB")
+                log("Init - Closing db.")
                 sqlcon_wl.close()
             else:
                 log("Init - Error closing db.")
@@ -1312,7 +1321,6 @@ class Main:
             advancedsettings_XML = tree_XML.getroot()
             log('advancedsettings.xml file has been read.')
             # Get all values
-            #for video_XML in advancedsettings_XML:            
             Temp = advancedsettings_XML.find("video/playcountminimumpercent")
             if Temp is not None:
                 Global_BIU_vars["playcountminimumpercent"] = int(Temp.text)
@@ -1325,10 +1333,10 @@ class Main:
         except Exception:
             log('Error reading advancedsettings.xml!!')
         finally:
-        # Log all values
-        log('playcountminimumpercent = %s' % str(Global_BIU_vars["playcountminimumpercent"]))
-        log('ignoresecondsatstart = %s' % str(Global_BIU_vars["ignoresecondsatstart"]))
-        log('ignorepercentatend = %s' % str(Global_BIU_vars["ignorepercentatend"]))
+            # Log all values
+            log('playcountminimumpercent = %s' % str(Global_BIU_vars["playcountminimumpercent"]))
+            log('ignoresecondsatstart = %s' % str(Global_BIU_vars["ignoresecondsatstart"]))
+            log('ignorepercentatend = %s' % str(Global_BIU_vars["ignorepercentatend"]))
         
 
     def _daemon(self):
