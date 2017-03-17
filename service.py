@@ -24,6 +24,7 @@ from resources.lib.utils import log
 from resources.lib.utils import settings
 import sys, re, os, json, time, ntpath
 import xml.etree.ElementTree as ET
+ParseError = ET.ParseError
 import sqlite3
 #import mysql.connector
 
@@ -56,6 +57,7 @@ Global_BIU_vars = {"Default_stop_time": 9999999,    # No video is that long
                    "Update_Streamdetails": False,   # streamdetails in Kodi library != []
                    "Video_ID": -1,                  # Needed for JSON calls
                    "BIU_videofile_unicode": "",     # ID used in resume db
+                   "itemseparator": " / ",          # used for : "Adventure / crime / fantasy"
                    "playcountminimumpercent": 90,   # Init, for watched (Kodi default)
                    "ignoresecondsatstart": 180,     # Init, for resumepoint (Kodi default)
                    "ignorepercentatend": 8,         # Init, for resumepoint (Kodi default)
@@ -285,7 +287,7 @@ class BIUplayer(xbmc.Player):
             log("Subtitles if no user language selected.")
             # Check if we need to display the subs for this language
             # Don't show subs if audio and user language are the same
-            if ((aud_o_l == self.UserLang01) or (aud_o_l == self.UserLang02)):
+            if ((aud_o_l == settings.UserLang01) or (aud_o_l == settings.UserLang02)):
                 self.Show_subs = False
                 log("Audio is same as userlang, no subs displayed!")
             else:
@@ -403,258 +405,278 @@ class BIUplayer(xbmc.Player):
             # Get the correct subs
             self.SetSubs(setting_discorig, sub_forn, sub_hear, sub_nor, aud_orig_l, sub_l)
 
-    def Get_nfo_set(self, nfo_xml, BIU_file, extras_subdir):
+
+    def Get_nfo_set(self, nfo_xml, BIU_file, extras_subdir, selected_lang):
+        log("1111111111111111111111111111111111111111")
         # for every video node in this disc
         # Init
         backpathiso_UTF8 = None
         mpls_u = None
         found_match = False             # is used to break out of the outer loop if we found our file
+        # Starttime
+        st_p_r = 0    # Init
+        st_i = 0      # Init
+        # Stoptime
+        Global_BIU_vars["Stop_time"] = Global_BIU_vars["Default_stop_time"] 
+        # Audiostream
+        au_o_i = -1  # audiostream_orig_int  
+        au_o_l = ""  # audiostream_orig_lang
+        au_od_i = -1 # audiostream_orig_desc_int
+        au_oh_i = -1 # audiostream_orig_hear_imp_int
+        au_d_i = -1  # audiostream_dubbed_int
+        au_d_l = ""  # audiostream_dubbed_lang
+        au_dd_i = -1 # audiostream_dubbed_desc_int
+        au_dh_i = -1 # audiostream_dubbed_hear_imp_int
+        # Subtitlestream
+        su_i = -1
+        su_l = ""
+        su_h_i = -1
+        su_f_i = -1        
         for lang_XML in nfo_xml:
-            for video_XML in lang_XML:
-                if video_XML.tag == "video":
-                    log('Videofile = %s' % (video_XML.attrib['filename']))
-                    # Get the subdir attrib
-                    # Init to true
-                    match_video = True
-                    # Check if subdir attrib exists in this video tag
-                    if 'subdir' in video_XML.attrib:
-                        log("Video tag has a subdir attribute!")
-                        myvideo_attrib_UTF8 = video_XML.attrib['subdir']
-                        # subdir attrib exists, lets check if it matches
-                        if myvideo_attrib_UTF8 is not None:
-                            if myvideo_attrib_UTF8 != extras_subdir:
-                                match_video = False
-                                log('Extras subdir does not match.')
-                    # Check for the "NYI" (Not Yet Implemented) video_type
-                    # If we find it then we can't process this video. Kodi doesn't know what to do with it.
-                    if 'video_type' in video_XML.attrib:
-                        myvideo_attrib_UTF8 = video_XML.attrib['video_type']
-                        if myvideo_attrib_UTF8 is not None:
-                            if myvideo_attrib_UTF8 == 'NYI':
-                                # If this flag is false then this video element isn't processed
-                                match_video = False
-                                log('This video element has a NYI video_type. Skipping!')
-                    # Check if the filename attrib contains the correct filename
-                    if ((video_XML.attrib['filename'] == BIU_file) and (match_video)): 
-                        log('Videofile and xml record match.')                      # if yes: We have a winner!!!
-                        # Playlist number
-                        myplaylistnumber = video_XML.find('playlist')
-                        if myplaylistnumber is not None:
-                            mpls_u = myplaylistnumber.text
-                            if mpls_u is not None:
-                                log('playlist = %s' % mpls_u)
+            log("Current Tag = %s" % lang_XML.tag)
+            if ((lang_XML.tag == "disclanguage") and (lang_XML.attrib['lang'] == selected_lang)):
+                for video_XML in lang_XML:
+                    log("2")
+                    if video_XML.tag == "video":
+                        log('Videofile = %s' % (video_XML.attrib['filename']))
+                        # Get the subdir attrib
+                        # Init to true
+                        match_video = True
+                        # Check if subdir attrib exists in this video tag
+                        if 'subdir' in video_XML.attrib:
+                            log("Video tag has a subdir attribute!")
+                            myvideo_attrib_UTF8 = video_XML.attrib['subdir']
+                            # subdir attrib exists, lets check if it matches
+                            if myvideo_attrib_UTF8 is not None:
+                                if myvideo_attrib_UTF8 != extras_subdir:
+                                    match_video = False
+                                    log('Extras subdir does not match.')
+                        # Check for the "NYI" (Not Yet Implemented) video_type
+                        # If we find it then we can't process this video. Kodi doesn't know what to do with it.
+                        if 'video_type' in video_XML.attrib:
+                            myvideo_attrib_UTF8 = video_XML.attrib['video_type']
+                            if myvideo_attrib_UTF8 is not None:
+                                if myvideo_attrib_UTF8 == 'NYI':
+                                    # If this flag is false then this video element isn't processed
+                                    match_video = False
+                                    log('This video element has a NYI video_type. Skipping!')
+                                    # Show user dialog so he/she knows that this item can only be viewed through
+                                    # a licensed bluray player. But only if thisis the item we selected
+                                    if video_XML.attrib['filename'] == BIU_file:
+                                        log('This feature is not yet available through Kodi. Please use a licensed bluray player to see it.')
+                                        self.stop()
+                                        dialog = xbmcgui.Dialog()
+                                        dialog.ok('Bluray Iso Utils', 'This feature is not yet available through Kodi. Please use a licensed bluray player to see it.')
+                                        self.BIU_ExitHandler('NYI - Not Yet Implemented!!')
+                                        
+                        # Check if the filename attrib contains the correct filename
+                        if ((video_XML.attrib['filename'] == BIU_file) and (match_video)): 
+                            log('Videofile and xml record match.')                      # if yes: We have a winner!!!
+                            # Playlist number
+                            myplaylistnumber = video_XML.find('playlist')
+                            if myplaylistnumber is not None:
+                                mpls_u = myplaylistnumber.text
+                                if mpls_u is not None:
+                                    log('playlist = %s' % mpls_u)
+                                else:
+                                    # Bad .xml file, playlist Must contain valid data
+                                    self.BIU_ExitHandler('No valid playlist in the XML!! Aborting')
+                                    return
+                            found_match = True
+                            # Starttime
+                            mystarttime = video_XML.find('starttime')
+                            if mystarttime is not None:
+                                # Starttime element has children
+                                if len(mystarttime) <> 0:
+                                    log('starttime has %s children' % len(mystarttime))
+                                    # Get starttime/no_recap element (= starttime)
+                                    mystarttime_no_recap = video_XML.find('starttime/no_recap')
+                                    if mystarttime_no_recap is not None:
+                                        mystarttime_no_recap_UTF8 = mystarttime_no_recap.text
+                                        if mystarttime_no_recap_UTF8 is not None:
+                                            st_i = self.ConvertTimeToSecs(mystarttime_no_recap_UTF8, "start")
+                                            log('Starttime (no recap) = %s' % mystarttime_no_recap_UTF8)
+                                    # Get starttime/plus_recap element
+                                    mystarttime_plus_recap = video_XML.find('starttime/plus_recap')
+                                    if mystarttime_plus_recap is not None:
+                                        mystarttime_plus_recap_UTF8 = mystarttime_plus_recap.text
+                                        if mystarttime_plus_recap_UTF8 is not None:
+                                            st_p_r = self.ConvertTimeToSecs(mystarttime_plus_recap_UTF8, "start")
+                                            log('Starttime (plus_recap) = %s' % mystarttime_plus_recap_UTF8)
+                                # Starttime element has no children,
+                                # But contains a valid (?) value
+                                else:
+                                    # Check if the tag has content, or is empty
+                                    mystarttime_UTF8 = mystarttime.text
+                                    if mystarttime_UTF8 is not None:
+                                        st_i = self.ConvertTimeToSecs(mystarttime_UTF8, "start")
+                                        log('Starttime = %s' % mystarttime_UTF8)
                             else:
-                                # Bad .xml file, playlist Must contain valid data
-                                self.BIU_ExitHandler('No valid playlist in the XML!! Aborting')
-                                return
-                        # Starttime
-                        st_p_r = 0    # Init
-                        st_i = 0      # Init
-                        mystarttime = video_XML.find('starttime')
-                        if mystarttime is not None:
-                            # Starttime element has children
-                            if len(mystarttime) <> 0:
-                                log('starttime has %s children' % len(mystarttime))
-                                # Get starttime/no_recap element (= starttime)
-                                mystarttime_no_recap = video_XML.find('starttime/no_recap')
-                                if mystarttime_no_recap is not None:
-                                    mystarttime_no_recap_UTF8 = mystarttime_no_recap.text
-                                    if mystarttime_no_recap_UTF8 is not None:
-                                        st_i = self.ConvertTimeToSecs(mystarttime_no_recap_UTF8, "start")
-                                        log('Starttime (no recap) = %s' % mystarttime_no_recap_UTF8)
-                                # Get starttime/plus_recap element
-                                mystarttime_plus_recap = video_XML.find('starttime/plus_recap')
-                                if mystarttime_plus_recap is not None:
-                                    mystarttime_plus_recap_UTF8 = mystarttime_plus_recap.text
-                                    if mystarttime_plus_recap_UTF8 is not None:
-                                        st_p_r = self.ConvertTimeToSecs(mystarttime_plus_recap_UTF8, "start")
-                                        log('Starttime (plus_recap) = %s' % mystarttime_plus_recap_UTF8)
-                            # Starttime element has no children,
-                            # But contains a valid (?) value
-                            else:
-                                # Check if the tag has content, or is empty
-                                mystarttime_UTF8 = mystarttime.text
-                                if mystarttime_UTF8 is not None:
-                                    st_i = self.ConvertTimeToSecs(mystarttime_UTF8, "start")
-                                    log('Starttime = %s' % mystarttime_UTF8)
-                        else:
-                            # No start time found, startime = 0 secs
-                            log("No start time found, startime = 0 secs")
-                        log("Start time = %s" % st_i)
-                        log("Start time plus recap = %s" % st_p_r)
-                        # Get the stoptime (if specified)
-                        # We are playing a new video, so init Stop_time 
-                        Global_BIU_vars["Stop_time"] = Global_BIU_vars["Default_stop_time"] 
-                        mystoptime = video_XML.find('stoptime')
-                        if mystoptime is not None:
-                            # We found the tag
-                            mystoptime_UTF8 = mystoptime.text
-                            # Check if the tag is empty
-                            if mystoptime_UTF8 is not None:
-                                # Tag contains data
-                                stoptime_int = self.ConvertTimeToSecs(mystoptime_UTF8, "stop")
-                                Global_BIU_vars["Stop_time"] = stoptime_int
-                        log('Stoptime = %s seconds' % Global_BIU_vars["Stop_time"])
-                        # Audiostream
-                        au_o_i = -1  # audiostream_orig_int  
-                        au_o_l = ""  # audiostream_orig_lang
-                        au_od_i = -1 # audiostream_orig_desc_int
-                        au_oh_i = -1 # audiostream_orig_hear_imp_int
-                        au_d_i = -1  # audiostream_dubbed_int
-                        au_d_l = ""  # audiostream_dubbed_lang
-                        au_dd_i = -1 # audiostream_dubbed_desc_int
-                        au_dh_i = -1 # audiostream_dubbed_hear_imp_int
-                        myaudiostream = video_XML.find('audiochannel')
-                        if myaudiostream is not None:
-                            # Audiochannel element has children
-                            if len(myaudiostream) <> 0:
-                                log('audiochannel has %s children' % len(myaudiostream))
-                                # Get audiochannel/original element (= audiochannel)
-                                myaudiostream = video_XML.find('audiochannel/original')
-                                if myaudiostream is not None:
-                                    # Get the lang attrib
-                                    myaudiostream_attrib_UTF8 = myaudiostream.attrib["lang"]
-                                    if myaudiostream_attrib_UTF8 is not None:
-                                        au_o_l = myaudiostream_attrib_UTF8
-                                        log('audiochannel language = %s' % au_o_l)
-                                    # Check if element has children
-                                    if len(myaudiostream) <> 0:
-                                        log('audiochannel/original has %s children' % len(myaudiostream))
-                                        # Get the norm tag
-                                        myaudiostream = video_XML.find('audiochannel/original/norm')
-                                        if myaudiostream is not None:
+                                # No start time found, startime = 0 secs
+                                log("No start time found, startime = 0 secs")
+                            log("Start time = %s" % st_i)
+                            log("Start time plus recap = %s" % st_p_r)
+                            # Get the stoptime (if specified)
+                            # We are playing a new video, so init Stop_time 
+                            mystoptime = video_XML.find('stoptime')
+                            if mystoptime is not None:
+                                # We found the tag
+                                mystoptime_UTF8 = mystoptime.text
+                                # Check if the tag is empty
+                                if mystoptime_UTF8 is not None:
+                                    # Tag contains data
+                                    stoptime_int = self.ConvertTimeToSecs(mystoptime_UTF8, "stop")
+                                    Global_BIU_vars["Stop_time"] = stoptime_int
+                            log('Stoptime = %s seconds' % Global_BIU_vars["Stop_time"])
+                            # Audiostream
+                            myaudiostream = video_XML.find('audiochannel')
+                            if myaudiostream is not None:
+                                # Audiochannel element has children
+                                if len(myaudiostream) <> 0:
+                                    log('audiochannel has %s children' % len(myaudiostream))
+                                    # Get audiochannel/original element (= audiochannel)
+                                    myaudiostream = video_XML.find('audiochannel/original')
+                                    if myaudiostream is not None:
+                                        # Get the lang attrib
+                                        myaudiostream_attrib_UTF8 = myaudiostream.attrib["lang"]
+                                        if myaudiostream_attrib_UTF8 is not None:
+                                            au_o_l = myaudiostream_attrib_UTF8
+                                            log('audiochannel language = %s' % au_o_l)
+                                        # Check if element has children
+                                        if len(myaudiostream) <> 0:
+                                            log('audiochannel/original has %s children' % len(myaudiostream))
+                                            # Get the norm tag
+                                            myaudiostream = video_XML.find('audiochannel/original/norm')
+                                            if myaudiostream is not None:
+                                                myaudiostream_UTF8 = myaudiostream.text
+                                                if myaudiostream_UTF8 is not None:
+                                                    au_o_i = int(myaudiostream_UTF8)
+                                                    log('audiochannel/original/norm = %s' % myaudiostream_UTF8)
+                                            # Get the desc_nar tag
+                                            myaudiostream = video_XML.find('audiochannel/original/desc_nar')
+                                            if myaudiostream is not None:
+                                                myaudiostream_UTF8 = myaudiostream.text
+                                                if myaudiostream_UTF8 is not None:
+                                                    au_od_i = int(myaudiostream_UTF8)
+                                                    log('audiochannel/original/desc_nar = %s' % myaudiostream_UTF8)
+                                            # Get the hear_imp tag
+                                            myaudiostream = video_XML.find('audiochannel/original/hear_imp')
+                                            if myaudiostream is not None:
+                                                myaudiostream_UTF8 = myaudiostream.text
+                                                if myaudiostream_UTF8 is not None:
+                                                    au_oh_i = int(myaudiostream_UTF8)
+                                                    log('audiochannel/original/hear_imp = %s' % myaudiostream_UTF8)
+                                        # Element has no children
+                                        else: 
                                             myaudiostream_UTF8 = myaudiostream.text
                                             if myaudiostream_UTF8 is not None:
                                                 au_o_i = int(myaudiostream_UTF8)
-                                                log('audiochannel/original/norm = %s' % myaudiostream_UTF8)
-                                        # Get the desc_nar tag
-                                        myaudiostream = video_XML.find('audiochannel/original/desc_nar')
-                                        if myaudiostream is not None:
-                                            myaudiostream_UTF8 = myaudiostream.text
-                                            if myaudiostream_UTF8 is not None:
-                                                au_od_i = int(myaudiostream_UTF8)
-                                                log('audiochannel/original/desc_nar = %s' % myaudiostream_UTF8)
-                                        # Get the hear_imp tag
-                                        myaudiostream = video_XML.find('audiochannel/original/hear_imp')
-                                        if myaudiostream is not None:
-                                            myaudiostream_UTF8 = myaudiostream.text
-                                            if myaudiostream_UTF8 is not None:
-                                                au_oh_i = int(myaudiostream_UTF8)
-                                                log('audiochannel/original/hear_imp = %s' % myaudiostream_UTF8)
-                                    # Element has no children
-                                    else: 
-                                        myaudiostream_UTF8 = myaudiostream.text
-                                        if myaudiostream_UTF8 is not None:
-                                            au_o_i = int(myaudiostream_UTF8)
-                                            log('audiochannel/original = %s' % myaudiostream_UTF8)
-                                # Get audiochannel/dubbed element 
-                                myaudiostream_dubbed = video_XML.find('audiochannel/dubbed')
-                                if myaudiostream_dubbed is not None:
-                                    # Get the lang attrib
-                                    myaudiostream_dubbed_attrib_UTF8 = myaudiostream_dubbed.attrib["lang"]
-                                    if myaudiostream_dubbed_attrib_UTF8 is not None:
-                                        au_d_l = myaudiostream_dubbed_attrib_UTF8
-                                        log('audiochannel/dubbed language = %s' % au_d_l)
-                                    # Check if element has children
-                                    if len(myaudiostream_dubbed) <> 0:
-                                        log('audiochannel/dubbed has %s children' % len(myaudiostream_dubbed))
-                                        # Get the norm tag
-                                        myaudiostream_dubbed = video_XML.find('audiochannel/dubbed/norm')
-                                        myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
-                                        if myaudiostream_dubbed_UTF8 is not None: 
-                                            au_d_i = int(myaudiostream_dubbed_UTF8)
-                                            log('audiochannel/dubbed/norm = %s' % myaudiostream_dubbed_UTF8)
-                                        # Get the desc_nar tag
-                                        myaudiostream_dubbed = video_XML.find('audiochannel/dubbed/desc_nar')
-                                        if myaudiostream_dubbed is not None:
+                                                log('audiochannel/original = %s' % myaudiostream_UTF8)
+                                    # Get audiochannel/dubbed element 
+                                    myaudiostream_dubbed = video_XML.find('audiochannel/dubbed')
+                                    if myaudiostream_dubbed is not None:
+                                        # Get the lang attrib
+                                        myaudiostream_dubbed_attrib_UTF8 = myaudiostream_dubbed.attrib["lang"]
+                                        if myaudiostream_dubbed_attrib_UTF8 is not None:
+                                            au_d_l = myaudiostream_dubbed_attrib_UTF8
+                                            log('audiochannel/dubbed language = %s' % au_d_l)
+                                        # Check if element has children
+                                        if len(myaudiostream_dubbed) <> 0:
+                                            log('audiochannel/dubbed has %s children' % len(myaudiostream_dubbed))
+                                            # Get the norm tag
+                                            myaudiostream_dubbed = video_XML.find('audiochannel/dubbed/norm')
+                                            myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
+                                            if myaudiostream_dubbed_UTF8 is not None: 
+                                                au_d_i = int(myaudiostream_dubbed_UTF8)
+                                                log('audiochannel/dubbed/norm = %s' % myaudiostream_dubbed_UTF8)
+                                            # Get the desc_nar tag
+                                            myaudiostream_dubbed = video_XML.find('audiochannel/dubbed/desc_nar')
+                                            if myaudiostream_dubbed is not None:
+                                                myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
+                                                if myaudiostream_dubbed_UTF8 is not None:
+                                                    au_dd_i = int(myaudiostream_dubbed_UTF8)
+                                                    log('audiochannel/dubbed/desc_nar = %s' % myaudiostream_dubbed_UTF8)
+                                            # Get the hear_imp tag
+                                            myaudiostream_dubbed = video_XML.find('audiochannel/dubbed/hear_imp')
+                                            if myaudiostream_dubbed is not None:
+                                                myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
+                                                if myaudiostream_dubbed_UTF8 is not None:
+                                                    au_dh_i = int(myaudiostream_dubbed_UTF8)
+                                                    log('audiochannel/dubbed/hear_imp = %s' % myaudiostream_dubbed_UTF8)
+                                        # Element has no children
+                                        else: 
                                             myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
                                             if myaudiostream_dubbed_UTF8 is not None:
-                                                au_dd_i = int(myaudiostream_dubbed_UTF8)
-                                                log('audiochannel/dubbed/desc_nar = %s' % myaudiostream_dubbed_UTF8)
-                                        # Get the hear_imp tag
-                                        myaudiostream_dubbed = video_XML.find('audiochannel/dubbed/hear_imp')
-                                        if myaudiostream_dubbed is not None:
-                                            myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
-                                            if myaudiostream_dubbed_UTF8 is not None:
-                                                au_dh_i = int(myaudiostream_dubbed_UTF8)
-                                                log('audiochannel/dubbed/hear_imp = %s' % myaudiostream_dubbed_UTF8)
-                                    # Element has no children
-                                    else: 
-                                        myaudiostream_dubbed_UTF8 = myaudiostream_dubbed.text
-                                        if myaudiostream_dubbed_UTF8 is not None:
-                                            au_o_i = int(myaudiostream_dubbed_UTF8)
-                                            log('audiochannel/dubbed = %s' % myaudiostream_dubbed_UTF8)
-                            # Audiochannel element has no children
-                            else:
-                                # Check if the tag has content, or is empty
-                                myaudiostream_UTF8 = myaudiostream.text
-                                if myaudiostream_UTF8 is not None:
-                                    au_o_i = int(myaudiostream_UTF8)
-                                    log('audiochannel = %s' % myaudiostream_UTF8)
-                                    # Get the lang attrib
-                                    myaudiostream_attrib_UTF8 = myaudiostream.attrib["lang"]
-                                    if myaudiostream_attrib_UTF8 is not None:
-                                        au_o_l = myaudiostream_attrib_UTF8
-                                        log('audiochannel language = %s' % au_o_l)
-                        # Subtitlestream
-                        su_i = -1
-                        su_l = ""
-                        su_h_i = -1
-                        su_f_i = -1
-                        mysubtitlestream = video_XML.find('subtitlechannel')
-                        if mysubtitlestream is not None:
-                            # Mysubtitlestream element has children
-                            if len(mysubtitlestream) <> 0:
-                                log('Subtitlestream has %s children' % len(mysubtitlestream))
-                                # Get lang attrib
-                                mysubtitlestream_attrib_UTF8 = mysubtitlestream.attrib["lang"]
-                                if mysubtitlestream_attrib_UTF8 is not None:
-                                    su_l = mysubtitlestream_attrib_UTF8
-                                    log('audiochannel language = %s' % su_l)
-                                # Get subtitlechannel/norm element (= subtitlechannel)
-                                mysubtitlestream = video_XML.find('subtitlechannel/norm')
-                                if mysubtitlestream is not None:
-                                    mysubtitlestream_UTF8 = mysubtitlestream.text
-                                    if mysubtitlestream_UTF8 is not None:
-                                        su_i = int(mysubtitlestream_UTF8)
-                                        log('subtitlechannel = %s' % mysubtitlestream_UTF8)
-                                # Get subtitlechannel/hear_imp element 
-                                mysubtitlestream_hear_imp = video_XML.find('subtitlechannel/hear_imp')
-                                # Did we find this element?
-                                if mysubtitlestream_hear_imp is not None:
-                                    mysubtitlestream_hear_imp_UTF8 = mysubtitlestream_hear_imp.text
-                                    # Is the element empty?
-                                    if mysubtitlestream_hear_imp_UTF8 is not None:
-                                        su_h_i = int(mysubtitlestream_hear_imp_UTF8)
-                                        log('subtitlechannel/hear_imp = %s' % mysubtitlestream_hear_imp_UTF8)
-                                # Get subtitlechannel/for_lang element 
-                                mysubtitlestream_for_lang = video_XML.find('subtitlechannel/for_lang')
-                                if mysubtitlestream_for_lang is not None:
-                                    mysubtitlestream_for_lang_UTF8 = mysubtitlestream_for_lang.text
-                                    if mysubtitlestream_for_lang_UTF8 is not None:
-                                        su_f_i = int(mysubtitlestream_for_lang_UTF8)
-                                        log('subtitlechannel/for_lang = %s' % mysubtitlestream_for_lang_UTF8)
-                            # Mysubtitlestream element has no children
-                            else:
-                                # Check if the tag has content, or is empty
-                                mysubtitlestream_UTF8 = mysubtitlestream.text
-                                if mysubtitlestream_UTF8 is not None:
-                                    su_i = int(mysubtitlestream_UTF8)
-                                    log('subtitlechannel = %s' % mysubtitlestream_UTF8)
+                                                au_o_i = int(myaudiostream_dubbed_UTF8)
+                                                log('audiochannel/dubbed = %s' % myaudiostream_dubbed_UTF8)
+                                # Audiochannel element has no children
+                                else:
+                                    # Check if the tag has content, or is empty
+                                    myaudiostream_UTF8 = myaudiostream.text
+                                    if myaudiostream_UTF8 is not None:
+                                        au_o_i = int(myaudiostream_UTF8)
+                                        log('audiochannel = %s' % myaudiostream_UTF8)
+                                        # Get the lang attrib
+                                        myaudiostream_attrib_UTF8 = myaudiostream.attrib["lang"]
+                                        if myaudiostream_attrib_UTF8 is not None:
+                                            au_o_l = myaudiostream_attrib_UTF8
+                                            log('audiochannel language = %s' % au_o_l)
+                            # Subtitlestream
+                            mysubtitlestream = video_XML.find('subtitlechannel')
+                            if mysubtitlestream is not None:
+                                # Mysubtitlestream element has children
+                                if len(mysubtitlestream) <> 0:
+                                    log('Subtitlestream has %s children' % len(mysubtitlestream))
                                     # Get lang attrib
                                     mysubtitlestream_attrib_UTF8 = mysubtitlestream.attrib["lang"]
                                     if mysubtitlestream_attrib_UTF8 is not None:
                                         su_l = mysubtitlestream_attrib_UTF8
                                         log('audiochannel language = %s' % su_l)
-                        found_match = True
-                        break   # No need to check the other entries, we found our match.
+                                    # Get subtitlechannel/norm element (= subtitlechannel)
+                                    mysubtitlestream = video_XML.find('subtitlechannel/norm')
+                                    if mysubtitlestream is not None:
+                                        mysubtitlestream_UTF8 = mysubtitlestream.text
+                                        if mysubtitlestream_UTF8 is not None:
+                                            su_i = int(mysubtitlestream_UTF8)
+                                            log('subtitlechannel = %s' % mysubtitlestream_UTF8)
+                                    # Get subtitlechannel/hear_imp element 
+                                    mysubtitlestream_hear_imp = video_XML.find('subtitlechannel/hear_imp')
+                                    # Did we find this element?
+                                    if mysubtitlestream_hear_imp is not None:
+                                        mysubtitlestream_hear_imp_UTF8 = mysubtitlestream_hear_imp.text
+                                        # Is the element empty?
+                                        if mysubtitlestream_hear_imp_UTF8 is not None:
+                                            su_h_i = int(mysubtitlestream_hear_imp_UTF8)
+                                            log('subtitlechannel/hear_imp = %s' % mysubtitlestream_hear_imp_UTF8)
+                                    # Get subtitlechannel/for_lang element 
+                                    mysubtitlestream_for_lang = video_XML.find('subtitlechannel/for_lang')
+                                    if mysubtitlestream_for_lang is not None:
+                                        mysubtitlestream_for_lang_UTF8 = mysubtitlestream_for_lang.text
+                                        if mysubtitlestream_for_lang_UTF8 is not None:
+                                            su_f_i = int(mysubtitlestream_for_lang_UTF8)
+                                            log('subtitlechannel/for_lang = %s' % mysubtitlestream_for_lang_UTF8)
+                                # Mysubtitlestream element has no children
+                                else:
+                                    # Check if the tag has content, or is empty
+                                    mysubtitlestream_UTF8 = mysubtitlestream.text
+                                    if mysubtitlestream_UTF8 is not None:
+                                        su_i = int(mysubtitlestream_UTF8)
+                                        log('subtitlechannel = %s' % mysubtitlestream_UTF8)
+                                        # Get lang attrib
+                                        mysubtitlestream_attrib_UTF8 = mysubtitlestream.attrib["lang"]
+                                        if mysubtitlestream_attrib_UTF8 is not None:
+                                            su_l = mysubtitlestream_attrib_UTF8
+                                            log('audiochannel language = %s' % su_l)
+                            found_match = True
+                            break   # No need to check the other entries, we found our match.
             if found_match:
                 break
         # starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int,
         # audiostream_dubbed_lang, subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int,
         # myplaylistnumber_UTF8, subtitlestream_lang, audiostream_orig_desc_int, audiostream_dubbed_desc_int,
-        # audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int
-        return (st_p_r, st_i, au_o_i, au_o_l, au_d_i, au_d_l, su_i, su_h_i, su_f_i, mpls_u, su_l, au_od_i, au_dd_i, au_oh_i, au_dh_i)
+        # audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int, found_match
+        return (st_p_r, st_i, au_o_i, au_o_l, au_d_i, au_d_l, su_i, su_h_i, su_f_i, mpls_u, su_l, au_od_i, au_dd_i, au_oh_i, au_dh_i, found_match)
+
 
  
     # Test
@@ -674,6 +696,7 @@ class BIUplayer(xbmc.Player):
 	BIU_videofile_unicode = ""	    # Init
         # See what file we are now playing. 
         Nowplaying = self.getPlayingFile()
+        log('Nowplaying = %s' % Nowplaying)
 	# This part of code checks if we are starting a BR with the help of a .strm file.
 	if (Nowplaying == "special://home/addons/script.service.bluray_iso_utils/resources/media/BIU_Black_Animation.720p.mp4"):
             # Sometimes getInfoLabel returns "" for ListItem.Path or ListItem.FileName.
@@ -937,78 +960,159 @@ class BIUplayer(xbmc.Player):
             BIU_file_unicode = xbmc.translatePath(BIU_file_unicode).decode("utf-8")
             log('BIUfile.xml = %s ' % BIU_file_unicode)
 
+            '''
+
+            JSON_req = {"jsonrpc":"2.0",
+                        "id":1,
+                        "method":"Files.GetDirectory",
+                        "params":{"directory":BIU_FolderPath_unicode, "media":"video"}}
+            log('JSON_req string = %s' % json.dumps(JSON_req))
+            JSON_result = utils.executeJSON(JSON_req)
+            log('JSON Files.GetDirectory result = %s' % JSON_result)
+
+            JSON_req = {"jsonrpc":"2.0",
+                        "id":1,
+                        "method":"Files.GetDirectory",
+                        "params":{"directory":BIU_FolderPath_unicode + 'BIUfiles', "media":"video"}}
+            log('JSON_req string = %s' % json.dumps(JSON_req))
+            JSON_result = utils.executeJSON(JSON_req)
+            log('JSON Files.GetDirectory result = %s' % JSON_result)
+
+            JSON_req = {"jsonrpc":"2.0",
+                        "id":1,
+                        "method":"Files.GetDirectory",
+                        "params":{"directory":BIU_FolderPath_unicode, "media":"files"}}
+            log('JSON_req string = %s' % json.dumps(JSON_req))
+            JSON_result = utils.executeJSON(JSON_req)
+            log('JSON Files.GetDirectory result = %s' % JSON_result)
+
+            JSON_req = {"jsonrpc":"2.0",
+                        "id":1,
+                        "method":"Files.GetDirectory",
+                        "params":{"directory":BIU_FolderPath_unicode + 'BIUfiles', "media":"files"}}
+            log('JSON_req string = %s' % json.dumps(JSON_req))
+            JSON_result = utils.executeJSON(JSON_req)
+            log('JSON Files.GetDirectory result = %s' % JSON_result)
+
+
+            log(JSON_result["result"])
+            log(JSON_result["result"]["files"])
+            log(JSON_result["result"]["files"][2])
+            log(JSON_result["result"]["files"][2]["file"])
+            log("translatepath")
+            log(xbmc.validatePath(JSON_result["result"]["files"][2]["file"]))
+            log(xbmc.validatePath(JSON_result["result"]["files"][2]["file"]).decode("utf-8"))
+            log("validatepath")
+            log(xbmc.translatePath(JSON_result["result"]["files"][2]["file"]))
+            log(xbmc.translatePath(JSON_result["result"]["files"][2]["file"]).decode("utf-8"))
+            
+            #BIU_file_unicode = JSON_result["result"]["files"][2]["file"]
+
+            '''
+
+            '''Files.GetFileDetails
+            # Read the entire contents of the BIUfile.xml file.
+            try:
+                f = xbmcvfs.File(BIU_file_unicode)
+                xml_file = f.read()
+                f.close()
+                tree_XML = ET.parse(xml_file)
+                directorydetails_XML = tree_XML.getroot()
+                log('BIUfile.xml file has been read.')
+            except ET.ParseError as err:
+                log("XML error : %s" % err)
+                self.BIU_ExitHandler("Catastrophic BIUinfo.xml reading failure")
+                return
+            except IOError, e:
+                log("XML IOError : %s" % os.strerror(e.errno))
+                self.BIU_ExitHandler("BIUinfo.xml exception : IOError")
+                return
+            except OSError, e:
+                log("XML OSError : %s" % os.strerror(e.errno))
+                self.BIU_ExitHandler("BIUinfo.xml exception : OSError")
+                return
+            except Exception:
+                self.BIU_ExitHandler('General exception : Error reading BIUfile.xml!!')
+                return
+            
+            '''
+            
             # Read the entire contents of the BIUfile.xml file.
             try:
                 tree_XML = ET.parse(BIU_file_unicode)
                 directorydetails_XML = tree_XML.getroot()
                 log('BIUfile.xml file has been read.')
+            except ET.ParseError as err:
+                log("XML error : %s" % err)
+                self.BIU_ExitHandler("Catastrophic BIUinfo.xml reading failure")
+                return
+            except IOError, e:
+                log("XML IOError : %s" % os.strerror(e.errno))
+                self.BIU_ExitHandler("BIUinfo.xml exception : IOError")
+                return
+            except OSError, e:
+                log("XML OSError : %s" % os.strerror(e.errno))
+                self.BIU_ExitHandler("BIUinfo.xml exception : OSError")
+                return
             except Exception:
                 self.BIU_ExitHandler('General exception : Error reading BIUfile.xml!!')
                 return
-
+            
             # Extract all settings from the BIUfile.xml file.
+            found_match = False
             for discdetails_XML in directorydetails_XML:    # for every disc
-                # Location of the iso file
-                backpathiso = discdetails_XML.find('isofile')
-                if backpathiso is not None:
-                    backpathiso_UTF8 = backpathiso.text
-                    log('isofile = %s' % backpathiso_UTF8)
-                else:
-                    # Bad .xml file, we need a isofile.
-                    self.BIU_ExitHandler('No valid isofile in the XML!! Aborting')
-                    return
+                if not found_match:
+                    # Location of the iso file
+                    backpathiso = discdetails_XML.find('isofile')
+                    if backpathiso is not None:
+                        backpathiso_UTF8 = backpathiso.text
+                        log('isofile = %s' % backpathiso_UTF8)
+                    else:
+                        # Bad .xml file, we need a isofile.
+                        self.BIU_ExitHandler('No valid isofile in the XML!! Aborting')
+                        return
 
-                # Find best disclanguage
-                self.DiscLanguage = ""
-                # Primary language
-                for disc_lang in discdetails_XML.findall('disclanguage'):
-                    log("disclang= %s" % disc_lang.get("lang"))
+                    # Find best disclanguage
+                    self.DiscLanguage = ""
+                    Lang_list = []
                     log("set.prim_lang = %s" % settings.prim_disc_lang)
-                    if disc_lang.get("lang") == settings.prim_disc_lang:
-                        self.DiscLanguage = disc_lang.get("lang")
+                    log("set.sec_lang = %s" % settings.sec_disc_lang)
+                    log("set.other_lang = %s" % settings.other_disc_lang)
+                    for disc_lang in discdetails_XML.findall('disclanguage'):
+                        log("disclang= %s" % disc_lang.get("lang"))
+                        Lang_list.append(disc_lang.get)
+                      
+                    # Primary language
+                    if settings.prim_disc_lang in Lang_list:
+                        self.DiscLanguage = settings.prim_disc_lang
                         log("Found prim lang : %s" % self.DiscLanguage)
                         starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
                         subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
-                        audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
-                        = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
-                        
-                # Secundary language
-                # Search only if no primary language found
-                if ((self.DiscLanguage == "") and (settings.sec_disc_lang != ("---" or "-a-"))):
-                    for disc_lang in discdetails_XML.findall('disclanguage'):
-                        log("disclang= %s" % disc_lang.get("lang"))
-                        log("set.sec_lang = %s" % settings.sec_disc_lang)
-                        if disc_lang.get("lang") == settings.sec_disc_lang:
-                            self.DiscLanguage = disc_lang.get("lang")
-                            log("Found sec lang : %s" % self.DiscLanguage)
-                            starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
-                            subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
-                            audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
-                            = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
-                        
-                # Other language
-                # Search only if no primary or secundary language found
-                if ((self.DiscLanguage == "") and (settings.other_disc_lang != ("---" or "-a-"))):
-                    for disc_lang in discdetails_XML.findall('disclanguage'):
-                        log("disclang= %s" % disc_lang.get("lang"))
-                        log("set.other_lang = %s" % settings.other_disc_lang)
-                        if disc_lang.get("lang") == settings.other_disc_lang:
-                            self.DiscLanguage = disc_lang.get("lang")
-                            log("Found other lang : %s" % self.DiscLanguage)
-                            starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
-                            subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
-                            audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
-                            = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
-                        
-                # Any language
-                # Search only if no primary, secundary or other language found
-                if self.DiscLanguage == "":
-                    self.DiscLanguage = discdetails_XML.find('disclanguage').get("lang")
-                    log("set.any_lang = %s" % self.DiscLanguage)
-                    starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, subtitlestream_int, \
-                    subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, audiostream_orig_desc_int, \
-                    audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int \
-                    = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir)
+                        audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int, found_match \
+                        = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir, self.DiscLanguage)
+                    # Secundary language
+                    elif settings.sec_disc_lang in Lang_list:
+                        self.DiscLanguage = settings.sec_disc_lang
+                        log("Found sec lang : %s" % self.DiscLanguage)
+                        starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
+                        subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
+                        audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int, found_match \
+                        = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir, self.DiscLanguage)
+                    # Other language
+                    elif settings.other_disc_lang in Lang_list:
+                        self.DiscLanguage = settings.other_disc_lang
+                        log("Found other lang : %s" % self.DiscLanguage)
+                        starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, \
+                        subtitlestream_int, subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, \
+                        audiostream_orig_desc_int, audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int, found_match \
+                        = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir, self.DiscLanguage)
+                    # Any language
+                    else:
+                        self.DiscLanguage = discdetails_XML.find('disclanguage').get("lang")
+                        starttime_plus_recap_int, starttime_int, audiostream_orig_int, audiostream_orig_lang, audiostream_dubbed_int, audiostream_dubbed_lang, subtitlestream_int, \
+                        subtitlestream_hear_imp_int, subtitlestream_for_lang_int, myplaylistnumber_UTF8, subtitlestream_lang, audiostream_orig_desc_int, \
+                        audiostream_dubbed_desc_int, audiostream_orig_hear_imp_int, audiostream_dubbed_hear_imp_int, found_match \
+                        = self.Get_nfo_set(discdetails_XML, BIU_FileName_unicode, BIU_extras_subdir, self.DiscLanguage)
 
             # The base path is "BIU_Path_unicode". Normally the user would place the iso file
             # in a subdirectory of the base path. However, with the following code section it is also
@@ -1073,9 +1177,30 @@ class BIUplayer(xbmc.Player):
 
             # Get resume info from the db
             try:
+                # Place init of db here, had to many problems while this was in __init__
+                if not xbmcvfs.exists(os.path.join(ADDONPROFILE, "BIU.db")):
+                    log("Initialising DB.")
+                    try:
+                        # Init db, create db if needed (works only if dir exists)
+                        sqlcon_wl = sqlite3.connect(os.path.join(ADDONPROFILE, "BIU.db"));
+                        sqlcursor_wl = sqlcon_wl.cursor()
+
+                        # create tables if they don't exist
+                        sqlcursor_wl.execute(QUERY_CREATE_SQLITE)
+                        sqlcon_wl.commit()
+                    except Exception:
+                        log("Error accessing db! (Init)")
+                    finally:
+                        if sqlcon_wl:
+                            log("Init - Closing db.")
+                            sqlcon_wl.close()
+                        else:
+                            log("Init - Error closing db.")
+
                 # Open db
                 sqlcon_wl = sqlite3.connect(self.dbPath);
                 sqlcursor_wl = sqlcon_wl.cursor()
+                    
                 # Check if a resume point for this video exist
                 values = list([Global_BIU_vars["BIU_videofile_unicode"]])
                 sqlcursor_wl.execute(QUERY_SELECT_SQLITE, values)
@@ -1233,7 +1358,7 @@ class BIUplayer(xbmc.Player):
 
         # Here we have the second pass of our service.
         # We detect this by looking at the filename of the current playing file.
-        # If it includes ".BIUfiles" then we have a hit.
+        # If it includes "BIUfiles" then we have a hit.
         if (self.isPlayingBIUBluRay and ('BIUfiles' in Nowplaying)):
             log('Second pass of the service script')
 
@@ -1285,6 +1410,7 @@ class Main:
         self.monitor = BIUmonitor()
         self.player = BIUplayer()
 
+        '''
         # It seems that while INSTALLING the addon, the DB init code is run to quickly.
         # The BIU.db file can then not be created, because the ADDONPROFILE directory doesn't exist yet.
         # To fix this problem: check the existence, and create if needed, this directory.
@@ -1311,6 +1437,7 @@ class Main:
                 sqlcon_wl.close()
             else:
                 log("Init - Error closing db.")
+        '''
 
         # Read the entire contents of the advancedsettings.xml file.
         # I don't know any other way to get these user setings.
@@ -1330,6 +1457,12 @@ class Main:
             Temp = advancedsettings_XML.find("video/ignorepercentatend")
             if Temp is not None:
                 Global_BIU_vars["ignorepercentatend"] = int(Temp.text)
+            Temp = advancedsettings_XML.find("videolibrary/itemseparator")
+            if Temp is not None:
+                Global_BIU_vars["itemseparator"] = Temp.text
+        except ET.ParseError as err:
+            log("XML error : %s" % err)
+            self.BIU_ExitHandler("Catastrophic BIUinfo.xml reading failure")
         except Exception:
             log('Error reading advancedsettings.xml!!')
         finally:
