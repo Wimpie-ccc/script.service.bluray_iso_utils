@@ -31,16 +31,16 @@
         <setting label="32846" type="lsep"/>
         <setting type="sep"/>
         <setting label="32857" type="lsep"/>
-        <setting id="SubOrigLang01" type="enum" enable="eq(-6,0)" label="32865" default="0" lvalues="32866|32862|32864|32870" />
+        <setting id="SubOrigLang01" type="enum" label="32865" default="0" lvalues="32866|32862|32864|32870" />
         <setting label="32856" type="lsep"/>
-        <setting id="SubSubbedLang01" type="enum" enable="eq(-8,1)" label="32865" default="0" lvalues="32866|32862|32864" />
+        <setting id="SubSubbedLang01" type="enum" label="32865" default="0" lvalues="32866|32862|32864" />
         <setting label="32859" type="lsep"/>
-        <setting id="SubOrigLang02" type="enum" enable="eq(-9,0)" label="32865" default="0" lvalues="32866|32862|32864|32870" />
+        <setting id="SubOrigLang02" type="enum" label="32865" default="0" lvalues="32866|32862|32864|32870" />
         <setting label="32858" type="lsep"/>
-        <setting id="SubSubbedLang02" type="enum" enable="eq(-11,1)" label="32865" default="0" lvalues="32866|32862|32864" />
+        <setting id="SubSubbedLang02" type="enum" label="32865" default="0" lvalues="32866|32862|32864" />
         <setting label="32861" type="lsep"/>
-        <setting id="SubOrigLang03" type="enum" enable="eq(-12,0)" label="32865" default="0" lvalues="32866|32862|32864|32870" />        
+        <setting id="SubOrigLang03" type="enum" label="32865" default="0" lvalues="32866|32862|32864|32870" />        
         <setting label="32860" type="lsep"/>
-        <setting id="SubSubbedLang03" type="enum" enable="eq(-14,1)" label="32865" default="0" lvalues="32866|32862|328646" />
+        <setting id="SubSubbedLang03" type="enum" label="32865" default="0" lvalues="32866|32862|32864" />
     </category>
 </settings>
