@@ -407,7 +407,6 @@ class BIUplayer(xbmc.Player):
 
 
     def Get_nfo_set(self, nfo_xml, BIU_file, extras_subdir, selected_lang):
-        log("1111111111111111111111111111111111111111")
         # for every video node in this disc
         # Init
         backpathiso_UTF8 = None
@@ -433,10 +432,8 @@ class BIUplayer(xbmc.Player):
         su_h_i = -1
         su_f_i = -1        
         for lang_XML in nfo_xml:
-            log("Current Tag = %s" % lang_XML.tag)
             if ((lang_XML.tag == "disclanguage") and (lang_XML.attrib['lang'] == selected_lang)):
                 for video_XML in lang_XML:
-                    log("2")
                     if video_XML.tag == "video":
                         log('Videofile = %s' % (video_XML.attrib['filename']))
                         # Get the subdir attrib
@@ -954,13 +951,16 @@ class BIUplayer(xbmc.Player):
                     log("BIU_extras_subdir = %s" % BIU_extras_subdir)
                 BIU_FolderPath_unicode = BIU_FolderPath_unicode[0:s_index]
                 log("BIU_FolderPath_unicode = %s" % BIU_FolderPath_unicode)
-                    
+
+
+            #testcode for ET bug
+            '''
             # Construct the BIUinfo.xml location
             BIU_file_unicode = xbmc.validatePath(BIU_FolderPath_unicode + 'BIUfiles/BIUinfo.xml').decode("utf-8")
             BIU_file_unicode = xbmc.translatePath(BIU_file_unicode).decode("utf-8")
             log('BIUfile.xml = %s ' % BIU_file_unicode)
 
-            '''
+            
 
             JSON_req = {"jsonrpc":"2.0",
                         "id":1,
@@ -997,20 +997,25 @@ class BIUplayer(xbmc.Player):
 
             log(JSON_result["result"])
             log(JSON_result["result"]["files"])
-            log(JSON_result["result"]["files"][2])
-            log(JSON_result["result"]["files"][2]["file"])
+            log(JSON_result["result"]["files"][0])
+            log(JSON_result["result"]["files"][0]["file"])
             log("translatepath")
-            log(xbmc.validatePath(JSON_result["result"]["files"][2]["file"]))
-            log(xbmc.validatePath(JSON_result["result"]["files"][2]["file"]).decode("utf-8"))
+            log(xbmc.validatePath(JSON_result["result"]["files"][0]["file"]))
+            log(xbmc.validatePath(JSON_result["result"]["files"][0]["file"]).decode("utf-8"))
             log("validatepath")
-            log(xbmc.translatePath(JSON_result["result"]["files"][2]["file"]))
-            log(xbmc.translatePath(JSON_result["result"]["files"][2]["file"]).decode("utf-8"))
+            log(xbmc.translatePath(JSON_result["result"]["files"][0]["file"]))
+            log(xbmc.translatePath(JSON_result["result"]["files"][0]["file"]).decode("utf-8"))
+            if xbmcvfs.exists(JSON_result["result"]["files"][0]["file"]):
+                log("Joepi")
+            else:
+                log("Alleee")
+                
             
             #BIU_file_unicode = JSON_result["result"]["files"][2]["file"]
 
-            '''
+            
 
-            '''Files.GetFileDetails
+            Files.GetFileDetails
             # Read the entire contents of the BIUfile.xml file.
             try:
                 f = xbmcvfs.File(BIU_file_unicode)
