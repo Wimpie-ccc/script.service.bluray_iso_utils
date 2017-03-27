@@ -20,6 +20,7 @@ import os, json, time
 import xbmc
 import xbmcaddon
 import langcodes
+import xml.dom.minidom
 
 # import xbmcgui
 # import xbmcvfs
@@ -183,6 +184,39 @@ def log(txt):                       # loglevel is LOGDEBUG
             txt = txt.decode("utf-8")                   # then make it unicode
         message = u'%s: %s' % (ADDONNAME, txt)
         xbmc.log(msg=message.encode("utf-8"), level=xbmc.LOGDEBUG)  # Kodi accepts UTF-8 strings, not unicode
+
+def GetXML_TagValue(my_element, tagname):
+    '''
+    Returns None if tag could not be found, or was empty, or has children
+    Returns TagValue if tag exists
+    '''
+    try:
+        TagValue_elem = my_element.getElementsByTagName(tagname)[0]
+        TagValue = TagValue_elem.firstChild.data
+        if TagValue_elem.firstChild.nodeType != xml.dom.minidom.Element.TEXT_NODE:
+            TagValue = None
+        if len(TagValue_elem.childNodes) != 1:
+            TagValue = None
+        if TagValue.strip() == "":
+            TagValue = None
+    except (IndexError, AttributeError) as e:
+        TagValue = None
+    return TagValue
+
+def GetXML_hasChildren(my_element, tagname):
+    '''
+    Returns True if tag has children, else false
+    '''
+    try:
+        TagValue = False
+        TagValue_elem = my_element.getElementsByTagName(tagname)[0]
+        if len(TagValue_elem.childNodes) > 1:
+            TagValue = True
+    except (IndexError, AttributeError) as e:
+        TagValue = False
+    return TagValue
+
+
 
 # Fixes unicode problems
 def string_unicode(text, encoding='utf-8'):     
