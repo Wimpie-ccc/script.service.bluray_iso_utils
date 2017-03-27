@@ -36,8 +36,7 @@
     <string id="32859">Show subtitles when secondary language is : Original</string>  
     <string id="32860">Show subtitles when other language is : Dubbed</string>  
     <string id="32861">Show subtitles when other language is : Original</string>  
-    <string id="32862">Yes</string>  
-    <string id="32863"></string>  
+    <string id="32862">Yes</string>
     <string id="32864">Prefer subtitles for spoken foreign languages</string>  
     <string id="32865"></string>
     <string id="32866">No</string>
@@ -48,6 +47,7 @@
     <string id="32871">Original user languages</string>
     <string id="32872">Language 1</string>
     <string id="32873">Language 2</string>
+    <string id="32863"></string>
     <string id="32874"></string>
     <string id="32875"></string>
     <string id="32876"></string>
